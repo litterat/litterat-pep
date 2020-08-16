@@ -5,6 +5,11 @@ Litterat:pep (projection-embedded pairs)
 ------------------
 
 [![GitHub](https://img.shields.io/github/license/litterat/pep-java)](https://github.com/litterat/pep-java/blob/master/LICENSE)
+[![Maven Central](https://img.shields.io/maven-central/v/io.litterat/litterat-pep.svg)](https://search.maven.org/search?q=io.litterat.litterat-pep
+[![badge-jdk](https://img.shields.io/badge/jdk-11-green.svg)](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
+[![Follow Litterat](https://img.shields.io/twitter/follow/litterat_io.svg?style=social)](https://twitter.com/litterat_io)
+[![Follow Oobles](https://img.shields.io/twitter/follow/oobles.svg?style=social)](https://twitter.com/oobles)
+
 
 This library is an implementation of some of the ideas written in [Towards Better Serialization](https://github.com/openjdk/amber-docs/blob/master/site/design-notes/towards-better-serialization.md) to create a class descriptor for use in serialization libraries and possibly other purposes. 
 It is not a serialization library in itself, but a way of describing how a class should be
@@ -37,8 +42,27 @@ in the serialization process to create low-GC overhead implementation.
 
 ## Maven dependencies
 
+Library is available from the [Maven repository](https://mvnrepository.com/artifact/io.litterat/litterat-pep) using dependency:
 
-Maven dependencies are currently being organised.
+```
+<dependency>
+  <groupId>io.litterat</groupId>
+  <artifactId>litterat-pep</artifactId>
+  <version>0.5.0</version>
+</dependency>
+```
+
+or for Gradle
+
+```
+// https://mvnrepository.com/artifact/io.litterat/litterat-pep
+implementation group: 'io.litterat', name: 'litterat-pep', version: '0.5.0'
+```
+
+## Building
+
+Gradle 6.5 has been used for building the library.
+
 
 ## License
 

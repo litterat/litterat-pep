@@ -90,9 +90,9 @@ public class PepClassDescriptor<T> {
 	/**
 	 * Convenience function. Takes the target object of this descriptor and return an object array.
 	 * 
-	 * @param o
-	 * @return
-	 * @throws Throwable
+	 * @param o target object instance to project to object[]
+	 * @return values from target object
+	 * @throws Throwable any failure from the project function.
 	 */
 	public Object[] project(T o) throws Throwable {
 
@@ -104,9 +104,9 @@ public class PepClassDescriptor<T> {
 	 * Convenience function. Takes an array of values based on the field types and returns the target
 	 * object.
 	 * 
-	 * @param values
-	 * @return
-	 * @throws Throwable
+	 * @param values object values to embed into target object.
+	 * @return recreated target object.
+	 * @throws Throwable any failure from the embed function.
 	 */
 	public T embed(Object[] values) throws Throwable {
 
