@@ -20,18 +20,18 @@ can then be used by an **embed** function to create the target object type with 
 
 
 ```java
-	// Create an instance object to be projected.
-	Point p1 = new Point(1,2);
-	
-	// Create a context and a descriptor for the target class.
-	PepContext context = new PepContext();
-	PepClassDescriptor pointDescriptor = context.getDescriptor(Point.class);
-	
-	// Extract the values to an array
-	Object[] values = pointDescriptor.project(p1);
-	
-	// Create the object from the values
-	Point p2 = pointDescriptor.embed(values);
+// Create an instance object to be projected.
+Point p1 = new Point(1,2);
+
+// Create a context and a descriptor for the target class.
+PepContext context = new PepContext();
+PepClassDescriptor pointDescriptor = context.getDescriptor(Point.class);
+
+// Extract the values to an array
+Object[] values = pointDescriptor.project(p1);
+
+// Create the object from the values
+Point p2 = pointDescriptor.embed(values);
 ```
 
 The Object[] values  can then be used by the serialization library to encode the data
@@ -89,33 +89,33 @@ In this case S is represented by the Object[] and B is represented by the target
 to represent the serialized state prior to creating the Object[]. The general form of the project function is:
 
 ```java
-	// First project the target to get projected form. May be an identity function.
-	Object small = project.invoke(big);
-	
-	// Get the values from the projected object.
-	Object[] values = new Object[fields.length];
-	for (int x=0; x<fields.length; x++) {
-		values[x] = fields[x].getValue();
-	}
-	return values;
+// First project the target to get projected form. May be an identity function.
+Object small = project.invoke(big);
+
+// Get the values from the projected object.
+Object[] values = new Object[fields.length];
+for (int x=0; x<fields.length; x++) {
+	values[x] = fields[x].getValue();
+}
+return values;
 ```
 
 Conversely the embed function can be simplified to the following:
 
 ```java
-	// Create the object passing in required arguments
-	Object small = new Small(values[0],...)
-	
-	// Call any setters.
-	for (int x=0; x<fields.length; x++) {
-	    if (fields[x].writeHandle() != null ) {
-		    // equivalent to small.setX(values[x]);
-			writeHandle.invoke(small, values[x]); 
-		}
+// Create the object passing in required arguments
+Object small = new Small(values[0],...)
+
+// Call any setters.
+for (int x=0; x<fields.length; x++) {
+    if (fields[x].writeHandle() != null ) {
+	    // equivalent to small.setX(values[x]);
+		writeHandle.invoke(small, values[x]); 
 	}
-	
-	// call the embed function and return Big.
-	return (Big) embed.invoke(small)
+}
+
+// call the embed function and return Big.
+return (Big) embed.invoke(small)
 ```
 
 In some cases it will be a simple one to one mapping between Big and Small with the project/embed functions being an identity function. 
@@ -141,14 +141,14 @@ class. This allows different communication streams to define different project/e
 communications. The interface has a simple interface with three functions.
 
 ```java
-  // get the class descriptor for the target class.
-  public <T> PepClassDescriptor<T> getDescriptor(Class<T> targetClass) throws PepException;
+// get the class descriptor for the target class.
+public <T> PepClassDescriptor<T> getDescriptor(Class<T> targetClass) throws PepException;
   
-  // get the class descriptor for the target class using a Project Embed function pair.
-  public <T> PepClassDescriptor<T> getDescriptor(Class<T> targetClass, ProjectEmbedPair<T, ?> pePair) throws PepException;
+// get the class descriptor for the target class using a Project Embed function pair.
+public <T> PepClassDescriptor<T> getDescriptor(Class<T> targetClass, ProjectEmbedPair<T, ?> pePair) throws PepException;
 
-  // get the class descriptor for the target class using a specific Embed implementation.
-  public <T> PepClassDescriptor<T> getDescriptor(Class<T> targetClass, Embeds<T> embeds) throws PepException;
+// get the class descriptor for the target class using a specific Embed implementation.
+public <T> PepClassDescriptor<T> getDescriptor(Class<T> targetClass, Embeds<T> embeds) throws PepException;
 ```
 
 A PepException will be thrown if a descriptor could not be generated, or if a call to getDescriptor uses a different Embeds/ProjectEmbedPair
@@ -165,45 +165,45 @@ and PepFieldDescriptor are immutable.
 The PepClassDescriptor has the following fields:
 
 ```java
-	// The class to be projected.
-	private final Class<T> targetClass;
+// The class to be projected.
+private final Class<T> targetClass;
 
-	// The embedded class type.
-	private final Class<?> embedClass;
+// The embedded class type.
+private final Class<?> embedClass;
 
-	// constructs, calls setters and embeds. Has signature: T embed( Object[] values ).
-	private final MethodHandle embedFunction;
+// constructs, calls setters and embeds. Has signature: T embed( Object[] values ).
+private final MethodHandle embedFunction;
 
-	// Calls getters on projected class
-	private final MethodHandle getter;
+// Calls getters on projected class
+private final MethodHandle getter;
 
-	// Converts from Object[] to targetClass. Has signature: Object[] project( T object );
-	private final MethodHandle projectFunction;
+// Converts from Object[] to targetClass. Has signature: Object[] project( T object );
+private final MethodHandle projectFunction;
 
-	// All fields in the projected class.
-	private final PepFieldDescriptor[] fields;
+// All fields in the projected class.
+private final PepFieldDescriptor[] fields;
 ```
 
 The PepFieldDescriptor has the following fields:
 
 ```java
-	// name of the field
-	private final String name;
-	
-	// type of the field
-	private final Class<?> type;
-	
-	// is the field optional
-	private final boolean isOptional;
-	
-	// set if the field is set in the constructor
-	private final int ctorArg;
+// name of the field
+private final String name;
 
-	// accessor read handle. signature: type t = object.getT();
-	private final MethodHandle readHandle;
-	
-	// setter write handle. Null for constructors. signature: object.setT( type t );
-	private final MethodHandle writeHandle;
+// type of the field
+private final Class<?> type;
+
+// is the field optional
+private final boolean isOptional;
+
+// set if the field is set in the constructor
+private final int ctorArg;
+
+// accessor read handle. signature: type t = object.getT();
+private final MethodHandle readHandle;
+
+// setter write handle. Null for constructors. signature: object.setT( type t );
+private final MethodHandle writeHandle;
 ```
 
 ### Projects & Embeds interfaces
@@ -256,20 +256,20 @@ While the target object Location stores multiple elements, the projected form fo
 LocationData with two float values. 
 
 ```java
-	// Create an instance object to be projected.
-	Location loc1 = new Location(-37,14, 144, 26);
-	
-	// Build a descriptor
-	PepClassDescriptor locationDescriptor = PepClassDescriptor.describe(Location.class);
-	
-	// Extract the values to an array
-	Object[] values = pointDescriptor.project(loc1);
-	
-	float latitude = values[0];
-	float longitude = values[1];
-	
-	// Create the object from the values
-	Location loc2 = (Location) pointDescriptor.embed(values);
+// Create an instance object to be projected.
+Location loc1 = new Location(-37,14, 144, 26);
+
+// Build a descriptor
+PepClassDescriptor locationDescriptor = PepClassDescriptor.describe(Location.class);
+
+// Extract the values to an array
+Object[] values = pointDescriptor.project(loc1);
+
+float latitude = values[0];
+float longitude = values[1];
+
+// Create the object from the values
+Location loc2 = (Location) pointDescriptor.embed(values);
 ```
 
 A class can implement the Projects interface and the projected class doesn't need to implement the **Embeds** interface.
@@ -665,21 +665,21 @@ This is used when describing the object. The LocationPep object is passed in as 
 The LocationData object is used as the serialization object.
 
 ```java
-	// Create an instance object to be projected.
-	Location loc1 = new Location(-37,14, 144, 26);
-	
-	// Build a descriptor
-	PepContext context = new PepContext();
-	PepClassDescriptor locationDescriptor = context.describe(Location.class, new LocationPep());
-	
-	// Extract the values to an array
-	Object[] values = pointDescriptor.project(loc1);
-	
-	float latitude = values[0];
-	float longitude = values[1];
-	
-	// Create the object from the values
-	Location loc2 = (Location) pointDescriptor.embed(values);
+// Create an instance object to be projected.
+Location loc1 = new Location(-37,14, 144, 26);
+
+// Build a descriptor
+PepContext context = new PepContext();
+PepClassDescriptor locationDescriptor = context.describe(Location.class, new LocationPep());
+
+// Extract the values to an array
+Object[] values = pointDescriptor.project(loc1);
+
+float latitude = values[0];
+float longitude = values[1];
+
+// Create the object from the values
+Location loc2 = (Location) pointDescriptor.embed(values);
 ```
 
 
