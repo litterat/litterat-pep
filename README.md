@@ -5,7 +5,7 @@ Litterat:pep (projection-embedded pairs)
 ------------------
 
 [![GitHub](https://img.shields.io/github/license/litterat/pep-java)](https://github.com/litterat/pep-java/blob/master/LICENSE)
-[![Maven Central](https://img.shields.io/maven-central/v/io.litterat/litterat-pep.svg)](https://search.maven.org/search?q=io.litterat.litterat-pep
+[![Maven Central](https://img.shields.io/maven-central/v/io.litterat/litterat-pep.svg)](https://search.maven.org/search?q=io.litterat.litterat-pep)
 [![badge-jdk](https://img.shields.io/badge/jdk-11-green.svg)](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
 [![Follow Litterat](https://img.shields.io/twitter/follow/litterat_io.svg?style=social)](https://twitter.com/litterat_io)
 [![Follow Oobles](https://img.shields.io/twitter/follow/oobles.svg?style=social)](https://twitter.com/oobles)
