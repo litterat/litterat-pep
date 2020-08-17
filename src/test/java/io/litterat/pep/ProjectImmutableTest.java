@@ -28,8 +28,8 @@ public class ProjectImmutableTest {
 		PepClassDescriptor<ProjectImmutable> descriptor = context.getDescriptor(ProjectImmutable.class);
 		Assertions.assertNotNull(descriptor);
 
-		Assertions.assertEquals(ProjectImmutable.class, descriptor.targetClass());
-		Assertions.assertEquals(ProjectImmutable.ProjectImmutableData.class, descriptor.serialClass());
+		Assertions.assertEquals(ProjectImmutable.class, descriptor.typeClass());
+		Assertions.assertEquals(ProjectImmutable.ProjectImmutableData.class, descriptor.dataClass());
 
 		PepFieldDescriptor[] fields = descriptor.fields();
 		Assertions.assertNotNull(fields);
@@ -51,11 +51,12 @@ public class ProjectImmutableTest {
 		ProjectImmutable test = new ProjectImmutable(xValue, yValue);
 
 		// project to an array.
-		Object[] values = descriptor.project(test);
+		PepArrayMapper<ProjectImmutable> arrayMap = new PepArrayMapper<>(descriptor);
+		Object[] values = arrayMap.toArray(test);
 		Assertions.assertNotNull(values);
 
 		// rebuild as an object.
-		ProjectImmutable embed = descriptor.embed(values);
+		ProjectImmutable embed = arrayMap.toObject(values);
 		Assertions.assertNotNull(embed);
 		if (!(embed instanceof ProjectImmutable)) {
 			Assertions.fail();

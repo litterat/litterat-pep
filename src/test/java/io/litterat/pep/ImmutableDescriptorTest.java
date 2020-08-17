@@ -15,6 +15,8 @@
  */
 package io.litterat.pep;
 
+import java.util.Map;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -28,8 +30,8 @@ public class ImmutableDescriptorTest {
 		PepClassDescriptor<SimpleImmutable> descriptor = context.getDescriptor(SimpleImmutable.class);
 		Assertions.assertNotNull(descriptor);
 
-		Assertions.assertEquals(SimpleImmutable.class, descriptor.targetClass());
-		Assertions.assertEquals(SimpleImmutable.class, descriptor.serialClass());
+		Assertions.assertEquals(SimpleImmutable.class, descriptor.typeClass());
+		Assertions.assertEquals(SimpleImmutable.class, descriptor.dataClass());
 
 		PepFieldDescriptor[] fields = descriptor.fields();
 		Assertions.assertNotNull(fields);
@@ -51,16 +53,24 @@ public class ImmutableDescriptorTest {
 		SimpleImmutable test = new SimpleImmutable(xValue, yValue);
 
 		// project to an array.
-		Object[] values = descriptor.project(test);
+		PepArrayMapper<SimpleImmutable> arrayMap = new PepArrayMapper<>(descriptor);
+		Object[] values = arrayMap.toArray(test);
 
 		// rebuild as an object.
-		SimpleImmutable embed = descriptor.embed(values);
+		SimpleImmutable embed = arrayMap.toObject(values);
 		Assertions.assertNotNull(embed);
 		if (!(embed instanceof SimpleImmutable)) {
 			Assertions.fail();
 		}
 
 		SimpleImmutable si = embed;
+		Assertions.assertEquals(xValue, si.x());
+		Assertions.assertEquals(yValue, si.y());
+
+		PepMapMapper<SimpleImmutable> mapMapper = new PepMapMapper<>(descriptor);
+		Map<String, Object> map = mapMapper.toMap(test);
+
+		si = (SimpleImmutable) mapMapper.toObject(map);
 		Assertions.assertEquals(xValue, si.x());
 		Assertions.assertEquals(yValue, si.y());
 

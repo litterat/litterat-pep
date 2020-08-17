@@ -28,14 +28,8 @@ public class PepFieldDescriptor {
 	// is the field optional
 	private final boolean isOptional;
 
-	// set if the field is set in the constructor
-	private final int ctorArg;
-
 	// accessor read handle. signature: type t = object.getT();
 	private final MethodHandle readHandle;
-
-	// setter write handle. Null for constructors. signature: object.setT( type t );
-	private final MethodHandle writeHandle;
 
 	public PepFieldDescriptor(String name, Class<?> type, boolean isOptional, MethodHandle readHandle,
 			MethodHandle writeHandle, int ctorArg) {
@@ -43,8 +37,6 @@ public class PepFieldDescriptor {
 		this.type = type;
 		this.isOptional = isOptional;
 		this.readHandle = readHandle;
-		this.writeHandle = writeHandle;
-		this.ctorArg = ctorArg;
 	}
 
 	public String name() {
@@ -59,16 +51,8 @@ public class PepFieldDescriptor {
 		return isOptional;
 	}
 
-	public MethodHandle readHandle() {
+	public MethodHandle accessor() {
 		return readHandle;
-	}
-
-	public MethodHandle writeHandle() {
-		return writeHandle;
-	}
-
-	public int constructorArgument() {
-		return ctorArg;
 	}
 
 }
