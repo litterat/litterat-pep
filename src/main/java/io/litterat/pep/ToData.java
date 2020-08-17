@@ -15,7 +15,7 @@
  */
 package io.litterat.pep;
 
-public interface Embeds<B> {
+public interface ToData<S> {
 
-	public B embed();
+	public S toData();
 }

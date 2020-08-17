@@ -15,7 +15,7 @@
  */
 package io.litterat.pep;
 
-public interface Projects<S> {
+public interface ToObject<B> {
 
-	public S project();
+	public B embed();
 }

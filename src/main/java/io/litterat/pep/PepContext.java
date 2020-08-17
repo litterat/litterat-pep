@@ -29,7 +29,7 @@ public class PepContext {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T> PepClassDescriptor<T> getDescriptor(Class<T> targetClass, ProjectEmbedPair<T, ?> pePair)
+	public <T> PepClassDescriptor<T> getDescriptor(Class<T> targetClass, ToDataObject<T, ?> pePair)
 			throws PepException {
 
 		PepClassDescriptor<?> descriptor = descriptors.get(targetClass);
@@ -42,7 +42,7 @@ public class PepContext {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T> PepClassDescriptor<T> getDescriptor(Class<T> targetClass, Embeds<T> embeds) throws PepException {
+	public <T> PepClassDescriptor<T> getDescriptor(Class<T> targetClass, ToObject<T> embeds) throws PepException {
 
 		PepClassDescriptor<?> descriptor = descriptors.get(targetClass);
 		if (descriptor == null) {
@@ -62,7 +62,7 @@ public class PepContext {
 			throw new IllegalArgumentException("Not able to describe class for serialization");
 		}
 
-		if (Projects.class.isAssignableFrom(targetClass)) {
+		if (ToData.class.isAssignableFrom(targetClass)) {
 			for (Type genericInterface : targetClass.getGenericInterfaces()) {
 				if (genericInterface instanceof ParameterizedType) {
 					Type[] genericTypes = ((ParameterizedType) genericInterface).getActualTypeArguments();

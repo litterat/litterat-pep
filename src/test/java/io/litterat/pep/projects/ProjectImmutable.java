@@ -15,10 +15,10 @@
  */
 package io.litterat.pep.projects;
 
-import io.litterat.pep.Projects;
+import io.litterat.pep.ToData;
 import io.litterat.pep.projects.ProjectImmutable.ProjectImmutableData;
 
-public class ProjectImmutable implements Projects<ProjectImmutableData> {
+public class ProjectImmutable implements ToData<ProjectImmutableData> {
 
 	private final int x;
 	private final int y;
@@ -54,7 +54,7 @@ public class ProjectImmutable implements Projects<ProjectImmutableData> {
 	}
 
 	@Override
-	public ProjectImmutableData project() {
+	public ProjectImmutableData toData() {
 		return new ProjectImmutableData(x, y);
 	}
 
