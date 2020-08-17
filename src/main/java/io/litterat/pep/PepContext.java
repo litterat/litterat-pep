@@ -75,7 +75,7 @@ public class PepContext {
 							MethodHandle embed = MethodHandles.lookup()
 									.unreflectConstructor(targetClass.getConstructor(serialClass));
 
-							MethodHandle project = MethodHandles.lookup().unreflect(targetClass.getMethod("project"));
+							MethodHandle project = MethodHandles.lookup().unreflect(targetClass.getMethod("toData"));
 
 							@SuppressWarnings("unchecked")
 							PepClassDescriptor<T> serialDescriptor = (PepClassDescriptor<T>) createDescriptor(
