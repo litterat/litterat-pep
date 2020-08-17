@@ -17,5 +17,5 @@ package io.litterat.pep;
 
 public interface ToObject<B> {
 
-	public B embed();
+	public B toObject();
 }

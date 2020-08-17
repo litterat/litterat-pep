@@ -17,7 +17,7 @@ package io.litterat.pep;
 
 public interface ToDataObject<S, B> {
 
-	public S project(B b);
+	public S toData(B b);
 
-	public B embed(S s);
+	public B toObject(S s);
 }
