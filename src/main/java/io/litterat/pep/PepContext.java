@@ -39,7 +39,6 @@ public class PepContext {
 		this.resolver = builder.resolver;
 	}
 
-	@SuppressWarnings("unchecked")
 	public PepDataClass getDescriptor(Class<?> targetClass) throws PepException {
 
 		PepDataClass descriptor = descriptors.get(targetClass);
@@ -61,8 +60,7 @@ public class PepContext {
 		}
 	}
 
-	public <T> void register(Class<T> targetClass, PepDataClass descriptor, ToDataObject<T, ?> pePair)
-			throws PepException {
+	public <T> void register(Class<T> targetClass, PepDataClass descriptor) throws PepException {
 		checkExists(targetClass);
 
 		descriptors.put(targetClass, descriptor);
@@ -97,7 +95,6 @@ public class PepContext {
 								MethodHandle project = MethodHandles.lookup()
 										.unreflect(targetClass.getMethod("toData"));
 
-								@SuppressWarnings("unchecked")
 								PepDataClass serialDescriptor = resolve(serialClass);
 
 								MethodHandle constructor = null;

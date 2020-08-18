@@ -51,12 +51,12 @@ public class ProjectImmutableTest {
 		ProjectImmutable test = new ProjectImmutable(xValue, yValue);
 
 		// project to an array.
-		PepArrayMapper<ProjectImmutable> arrayMap = new PepArrayMapper<>(descriptor);
+		PepArrayMapper arrayMap = new PepArrayMapper(context);
 		Object[] values = arrayMap.toArray(test);
 		Assertions.assertNotNull(values);
 
 		// rebuild as an object.
-		ProjectImmutable embed = arrayMap.toObject(values);
+		ProjectImmutable embed = arrayMap.toObject(ProjectImmutable.class, values);
 		Assertions.assertNotNull(embed);
 		if (!(embed instanceof ProjectImmutable)) {
 			Assertions.fail();

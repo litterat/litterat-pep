@@ -3,48 +3,72 @@ package io.litterat.pep;
 import java.lang.invoke.MethodHandle;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
-public class PepMapMapper<T> {
+public class PepMapMapper {
 
-	private final PepDataClass classDescriptor;
+	private final PepContext context;
 
-	private final MethodHandle constructor;
+	// private final MethodHandle constructor;
 
-	public PepMapMapper(PepDataClass classDescriptor) {
-		this.classDescriptor = classDescriptor;
+	public PepMapMapper(PepContext context) {
+		this.context = context;
 
-		// Convert constructor to take Object[]
-		this.constructor = classDescriptor.constructor().asSpreader(Object[].class,
-				classDescriptor.dataComponents().length);
 	}
 
 	public Map<String, Object> toMap(Object object) throws Throwable {
-		Object data = classDescriptor.toData().invoke(object);
+
+		Objects.requireNonNull(object);
+
+		PepDataClass dataClass = context.getDescriptor(object.getClass());
+
+		Object data = dataClass.toData().invoke(object);
 
 		Map<String, Object> map = new HashMap<>();
 
-		PepDataComponent[] fields = classDescriptor.dataComponents();
-		for (int x = 0; x < classDescriptor.dataComponents().length; x++) {
+		PepDataComponent[] fields = dataClass.dataComponents();
+		for (int x = 0; x < dataClass.dataComponents().length; x++) {
 			PepDataComponent field = fields[x];
 
-			map.put(field.name(), field.accessor().invoke(data));
+			Object v = field.accessor().invoke(data);
+			// TODO need to check correctly if this should be recursive.
+			// if (v != null && !field.getClass().isPrimitive()) {
+			// v = toMap(v);
+			// }
+			map.put(field.name(), v);
 		}
 		return map;
 	}
 
-	public Object toObject(Map<String, Object> map) throws Throwable {
+	@SuppressWarnings("unchecked")
+	public Object toObject(Class<?> clss, Map<String, Object> map) throws Throwable {
 
-		PepDataComponent[] fields = classDescriptor.dataComponents();
+		Objects.requireNonNull(clss);
+		Objects.requireNonNull(map);
+
+		PepDataClass dataClass = context.getDescriptor(clss);
+
+		PepDataComponent[] fields = dataClass.dataComponents();
 		Object[] construct = new Object[fields.length];
-		for (int x = 0; x < classDescriptor.dataComponents().length; x++) {
+		for (int x = 0; x < dataClass.dataComponents().length; x++) {
 			PepDataComponent field = fields[x];
 
-			construct[x] = map.get(field.name());
+			Object v = map.get(field.name());
+
+			// TODO correctly check field informatoin instead.
+			if (v instanceof Map) {
+				v = toObject(field.getClass(), (Map<String, Object>) v);
+			}
+			construct[x] = v;
 		}
+
+		// Convert constructor to take Object[]
+		MethodHandle constructor = dataClass.constructor().asSpreader(Object[].class,
+				dataClass.dataComponents().length);
 
 		Object data = constructor.invoke(construct);
 
-		return classDescriptor.toObject().invoke(data);
+		return dataClass.toObject().invoke(data);
 
 	}
 }

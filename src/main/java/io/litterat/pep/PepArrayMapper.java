@@ -3,22 +3,49 @@ package io.litterat.pep;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
-public class PepArrayMapper<T> {
+public class PepArrayMapper {
 
-	private final PepDataClass classDescriptor;
+	private final PepContext context;
 
-	// constructs, calls setters and embeds. Has signature: T embed( Object[] values ).
-	private final MethodHandle embedFunction;
+	private final Map<Class<?>, ArrayFunctions> functionCache;
 
-	// Converts from Object[] to targetClass. Has signature: Object[] project( T object );
-	private final MethodHandle projectFunction;
+	private static class ArrayFunctions {
 
-	public PepArrayMapper(PepDataClass classDescriptor) {
-		this.classDescriptor = classDescriptor;
-		this.projectFunction = createProjectFunction(classDescriptor.dataComponents(), classDescriptor.toData());
-		this.embedFunction = createEmbedFunction(classDescriptor.constructor(), classDescriptor.dataComponents(),
-				classDescriptor.toObject());
+		// Converts from Object[] to targetClass. Has signature: Object[] project( T object );
+		public final MethodHandle toArray;
+
+		// constructs, calls setters and embeds. Has signature: T embed( Object[] values ).
+		public final MethodHandle toObject;
+
+		public ArrayFunctions(MethodHandle toArray, MethodHandle toObject) {
+			this.toArray = toArray;
+			this.toObject = toObject;
+
+		}
+	}
+
+	public PepArrayMapper(PepContext context) {
+		this.context = context;
+		this.functionCache = new HashMap<>();
+
+	}
+
+	private ArrayFunctions getFunctions(Class<?> clss) throws PepException {
+		ArrayFunctions af = functionCache.get(clss);
+		if (af == null) {
+			PepDataClass dataClass = context.getDescriptor(clss);
+
+			MethodHandle toArray = createProjectFunction(dataClass);
+			MethodHandle toObject = createEmbedFunction(dataClass);
+
+			af = new ArrayFunctions(toArray, toObject);
+			functionCache.put(clss, af);
+		}
+		return af;
 	}
 
 	/**
@@ -28,10 +55,13 @@ public class PepArrayMapper<T> {
 	 * @return values from target object
 	 * @throws Throwable any failure from the project function.
 	 */
-	public Object[] toArray(T o) throws Throwable {
+	public Object[] toArray(Object o) throws Throwable {
+		Objects.requireNonNull(o);
+
+		ArrayFunctions af = getFunctions(o.getClass());
 
 		// create and fill array with project instance.
-		return (Object[]) projectFunction.invoke(o);
+		return (Object[]) af.toArray.invoke(o);
 	}
 
 	/**
@@ -42,10 +72,14 @@ public class PepArrayMapper<T> {
 	 * @return recreated target object.
 	 * @throws Throwable any failure from the embed function.
 	 */
-	public T toObject(Object[] values) throws Throwable {
+	public <T> T toObject(Class<T> clss, Object[] values) throws Throwable {
+		Objects.requireNonNull(clss);
+		Objects.requireNonNull(values);
+
+		ArrayFunctions af = getFunctions(clss);
 
 		// create the embedded object.
-		return (T) embedFunction.invoke(values);
+		return (T) af.toObject.invoke(values);
 	}
 
 	/**
@@ -66,14 +100,13 @@ public class PepArrayMapper<T> {
 	 * @param fields
 	 * @return a single MethodHandle to generate target object from Object[]
 	 */
-	private MethodHandle createEmbedFunction(MethodHandle objectConstructor, PepDataComponent[] fields,
-			MethodHandle embed) {
+	private MethodHandle createEmbedFunction(PepDataClass dataClass) {
 
 		// (Object[]):serialClass -> ctor(Object[])
-		MethodHandle create = createEmbedConstructor(objectConstructor, fields);
+		MethodHandle create = createEmbedConstructor(dataClass);
 
 		// (Object[]) -> embed( ctor(Object[]).setValues(Object[]) )
-		return MethodHandles.collectArguments(embed, 0, create);
+		return MethodHandles.collectArguments(dataClass.toObject(), 0, create);
 	}
 
 	/**
@@ -83,10 +116,11 @@ public class PepArrayMapper<T> {
 	 * @param fields
 	 * @return
 	 */
-	private MethodHandle createEmbedConstructor(MethodHandle objectConstructor, PepDataComponent[] fields) {
-		MethodHandle result = objectConstructor;
+	private MethodHandle createEmbedConstructor(PepDataClass dataClass) {
+		MethodHandle result = dataClass.constructor();
 
-		for (int x = 0; x < fields.length; x++) {
+		PepDataComponent[] fields = dataClass.dataComponents();
+		for (int x = 0; x < dataClass.dataComponents().length; x++) {
 			PepDataComponent field = fields[x];
 
 			int arg = x;
@@ -102,17 +136,19 @@ public class PepArrayMapper<T> {
 			MethodHandle arrayIndexGetter = MethodHandles.collectArguments(arrayGetter, 1, index)
 					.asType(MethodType.methodType(field.type(), Object[].class));
 
+			// TODO if child is Data then need to recursively call toObject.
+
 			// ()-> constructor( ..., values[inputIndex] , ... )
 			result = MethodHandles.collectArguments(result, arg, arrayIndexGetter);
 
 		}
 
 		// spread the arguments so ctor(Object[],Object[]...) becomes ctor(Object[])
-		int paramCount = objectConstructor.type().parameterCount();
+		int paramCount = dataClass.constructor().type().parameterCount();
 		if (paramCount > 0) {
 			int[] permuteInput = new int[paramCount];
 			result = MethodHandles.permuteArguments(result,
-					MethodType.methodType(classDescriptor.dataClass(), Object[].class), permuteInput);
+					MethodType.methodType(dataClass.dataClass(), Object[].class), permuteInput);
 		}
 		return result;
 	}
@@ -137,22 +173,22 @@ public class PepArrayMapper<T> {
 	 * @param fields
 	 * @return
 	 */
-	private MethodHandle createProjectFunction(PepDataComponent[] fields, MethodHandle project) {
+	private MethodHandle createProjectFunction(PepDataClass dataClass) {
 
 		// (int):Object[] -> new Object[int]
 		MethodHandle createArray = MethodHandles.arrayConstructor(Object[].class);
 
 		// (int):length -> fields.length
-		MethodHandle index = MethodHandles.constant(int.class, fields.length);
+		MethodHandle index = MethodHandles.constant(int.class, dataClass.dataComponents().length);
 
 		// ():Object[] -> new Object[fields.length]
 		MethodHandle arrayCreate = MethodHandles.collectArguments(createArray, 0, index);
 
 		// (Object[],serialClass):void -> getters(Object[],serialClass)
-		MethodHandle getters = createProjectGetters(fields);
+		MethodHandle getters = createProjectGetters(dataClass);
 
 		// (Object[],targetClass):void -> getters(Object[], project(targetClass))
-		MethodHandle projectGetters = MethodHandles.collectArguments(getters, 1, project);
+		MethodHandle projectGetters = MethodHandles.collectArguments(getters, 1, dataClass.toData());
 
 		// ():Object[] -> return new Object[fields.length];
 		MethodHandle returnArray = MethodHandles.collectArguments(projectGetters, 0, arrayCreate);
@@ -166,14 +202,15 @@ public class PepArrayMapper<T> {
 	 * @param fields
 	 * @return
 	 */
-	private MethodHandle createProjectGetters(PepDataComponent[] fields) {
+	private MethodHandle createProjectGetters(PepDataClass dataClass) {
 
 		// (object[]):object[] -> return object[];
 		MethodHandle identity = MethodHandles.identity(Object[].class);
 
 		// (Object[], embedClass):object[] -> return object[];
-		MethodHandle result = MethodHandles.dropArguments(identity, 1, classDescriptor.dataClass());
+		MethodHandle result = MethodHandles.dropArguments(identity, 1, dataClass.dataClass());
 
+		PepDataComponent[] fields = dataClass.dataComponents();
 		for (int x = 0; x < fields.length; x++) {
 
 			PepDataComponent field = fields[x];
@@ -189,8 +226,9 @@ public class PepArrayMapper<T> {
 			MethodHandle arrayIndexSetter = MethodHandles.collectArguments(arraySetter, 1, index);
 
 			// (object) -> (Object) object.getter()
-			MethodHandle fieldBox = field.accessor()
-					.asType(MethodType.methodType(Object.class, classDescriptor.dataClass()));
+			MethodHandle fieldBox = field.accessor().asType(MethodType.methodType(Object.class, dataClass.dataClass()));
+
+			// TODO check if this needs to recursively call toArray and modify methodhandle accordingly.
 
 			// (value[],object) -> value[inputIndex] = object.getter()
 			MethodHandle arrayValueSetter = MethodHandles.collectArguments(arrayIndexSetter, 1, fieldBox);

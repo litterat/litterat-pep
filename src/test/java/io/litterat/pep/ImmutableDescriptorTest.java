@@ -53,11 +53,11 @@ public class ImmutableDescriptorTest {
 		SimpleImmutable test = new SimpleImmutable(xValue, yValue);
 
 		// project to an array.
-		PepArrayMapper<SimpleImmutable> arrayMap = new PepArrayMapper<>(descriptor);
+		PepArrayMapper arrayMap = new PepArrayMapper(context);
 		Object[] values = arrayMap.toArray(test);
 
 		// rebuild as an object.
-		SimpleImmutable embed = arrayMap.toObject(values);
+		SimpleImmutable embed = arrayMap.toObject(SimpleImmutable.class, values);
 		Assertions.assertNotNull(embed);
 		if (!(embed instanceof SimpleImmutable)) {
 			Assertions.fail();
@@ -67,10 +67,10 @@ public class ImmutableDescriptorTest {
 		Assertions.assertEquals(xValue, si.x());
 		Assertions.assertEquals(yValue, si.y());
 
-		PepMapMapper<SimpleImmutable> mapMapper = new PepMapMapper<>(descriptor);
+		PepMapMapper mapMapper = new PepMapMapper(context);
 		Map<String, Object> map = mapMapper.toMap(test);
 
-		si = (SimpleImmutable) mapMapper.toObject(map);
+		si = (SimpleImmutable) mapMapper.toObject(SimpleImmutable.class, map);
 		Assertions.assertEquals(xValue, si.x());
 		Assertions.assertEquals(yValue, si.y());
 
