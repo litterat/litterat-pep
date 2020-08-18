@@ -15,12 +15,12 @@
  */
 package io.litterat.pep.describe;
 
-import io.litterat.pep.PepFieldDescriptor;
+import io.litterat.pep.PepDataComponent;
 
 public class GetSetDescriber implements ClassDescriber {
 
 	@Override
-	public PepFieldDescriptor[] describe(Class<?> clss) {
+	public PepDataComponent[] describe(Class<?> clss) {
 		// TODO Auto-generated method stub
 		return null;
 	}

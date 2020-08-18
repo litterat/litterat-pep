@@ -6,7 +6,7 @@ import java.lang.invoke.MethodType;
 
 public class PepArrayMapper<T> {
 
-	private final PepClassDescriptor<T> classDescriptor;
+	private final PepDataClass classDescriptor;
 
 	// constructs, calls setters and embeds. Has signature: T embed( Object[] values ).
 	private final MethodHandle embedFunction;
@@ -14,10 +14,10 @@ public class PepArrayMapper<T> {
 	// Converts from Object[] to targetClass. Has signature: Object[] project( T object );
 	private final MethodHandle projectFunction;
 
-	public PepArrayMapper(PepClassDescriptor<T> classDescriptor) {
+	public PepArrayMapper(PepDataClass classDescriptor) {
 		this.classDescriptor = classDescriptor;
-		this.projectFunction = createProjectFunction(classDescriptor.fields(), classDescriptor.toData());
-		this.embedFunction = createEmbedFunction(classDescriptor.constructor(), classDescriptor.fields(),
+		this.projectFunction = createProjectFunction(classDescriptor.dataComponents(), classDescriptor.toData());
+		this.embedFunction = createEmbedFunction(classDescriptor.constructor(), classDescriptor.dataComponents(),
 				classDescriptor.toObject());
 	}
 
@@ -66,7 +66,7 @@ public class PepArrayMapper<T> {
 	 * @param fields
 	 * @return a single MethodHandle to generate target object from Object[]
 	 */
-	private MethodHandle createEmbedFunction(MethodHandle objectConstructor, PepFieldDescriptor[] fields,
+	private MethodHandle createEmbedFunction(MethodHandle objectConstructor, PepDataComponent[] fields,
 			MethodHandle embed) {
 
 		// (Object[]):serialClass -> ctor(Object[])
@@ -83,11 +83,11 @@ public class PepArrayMapper<T> {
 	 * @param fields
 	 * @return
 	 */
-	private MethodHandle createEmbedConstructor(MethodHandle objectConstructor, PepFieldDescriptor[] fields) {
+	private MethodHandle createEmbedConstructor(MethodHandle objectConstructor, PepDataComponent[] fields) {
 		MethodHandle result = objectConstructor;
 
 		for (int x = 0; x < fields.length; x++) {
-			PepFieldDescriptor field = fields[x];
+			PepDataComponent field = fields[x];
 
 			int arg = x;
 			int inputIndex = x;
@@ -137,7 +137,7 @@ public class PepArrayMapper<T> {
 	 * @param fields
 	 * @return
 	 */
-	private MethodHandle createProjectFunction(PepFieldDescriptor[] fields, MethodHandle project) {
+	private MethodHandle createProjectFunction(PepDataComponent[] fields, MethodHandle project) {
 
 		// (int):Object[] -> new Object[int]
 		MethodHandle createArray = MethodHandles.arrayConstructor(Object[].class);
@@ -166,7 +166,7 @@ public class PepArrayMapper<T> {
 	 * @param fields
 	 * @return
 	 */
-	private MethodHandle createProjectGetters(PepFieldDescriptor[] fields) {
+	private MethodHandle createProjectGetters(PepDataComponent[] fields) {
 
 		// (object[]):object[] -> return object[];
 		MethodHandle identity = MethodHandles.identity(Object[].class);
@@ -176,7 +176,7 @@ public class PepArrayMapper<T> {
 
 		for (int x = 0; x < fields.length; x++) {
 
-			PepFieldDescriptor field = fields[x];
+			PepDataComponent field = fields[x];
 			int outputIndex = x;
 
 			// (value[],x, v) -> value[x] = v

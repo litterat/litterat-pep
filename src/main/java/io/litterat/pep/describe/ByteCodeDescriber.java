@@ -34,7 +34,7 @@ import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
 import io.litterat.pep.PepException;
-import io.litterat.pep.PepFieldDescriptor;
+import io.litterat.pep.PepDataComponent;
 
 public class ByteCodeDescriber implements ClassDescriber {
 
@@ -53,7 +53,7 @@ public class ByteCodeDescriber implements ClassDescriber {
 	}
 
 	@Override
-	public PepFieldDescriptor[] describe(Class<?> clss) throws PepException {
+	public PepDataComponent[] describe(Class<?> clss) throws PepException {
 
 		FieldInfo[] fields = new FieldInfo[clss.getDeclaredFields().length];
 
@@ -92,13 +92,13 @@ public class ByteCodeDescriber implements ClassDescriber {
 
 			// Prepare the field descriptors.
 			// TODO deal with fields that were not found.
-			PepFieldDescriptor[] fieldDescriptors = new PepFieldDescriptor[fields.length];
+			PepDataComponent[] fieldDescriptors = new PepDataComponent[fields.length];
 			for (int x = 0; x < fields.length; x++) {
 				FieldInfo info = fields[x];
 
 				MethodHandle accessor = MethodHandles.lookup().unreflect(info.accessor);
 
-				fieldDescriptors[x] = new PepFieldDescriptor(info.name, info.type, info.isOptional, accessor, null,
+				fieldDescriptors[x] = new PepDataComponent(info.name, info.type, info.isOptional, accessor, null,
 						info.arg);
 			}
 

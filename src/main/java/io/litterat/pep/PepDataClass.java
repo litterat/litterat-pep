@@ -21,12 +21,11 @@ import java.lang.invoke.MethodHandle;
  * A PepClassDescriptor provides a descriptor for a classes projected/embedded pair for use in
  * serialization libraries.
  *
- * @param <T> Pep class descriptor for type T
  */
-public class PepClassDescriptor<T> {
+public class PepDataClass {
 
 	// The class to be projected.
-	private final Class<T> typeClass;
+	private final Class<?> typeClass;
 
 	// The embedded class type.
 	private final Class<?> dataClass;
@@ -41,13 +40,13 @@ public class PepClassDescriptor<T> {
 	private final MethodHandle toObject;
 
 	// All fields in the projected class.
-	private final PepFieldDescriptor[] fields;
+	private final PepDataComponent[] dataComponents;
 
-	public PepClassDescriptor(Class<T> targetType, Class<?> serialType, MethodHandle constructor, MethodHandle project,
-			MethodHandle embed, PepFieldDescriptor[] fields) {
+	public PepDataClass(Class<?> targetType, Class<?> serialType, MethodHandle constructor, MethodHandle project,
+			MethodHandle embed, PepDataComponent[] fields) {
 		this.typeClass = targetType;
 		this.dataClass = serialType;
-		this.fields = fields;
+		this.dataComponents = fields;
 		this.constructor = constructor;
 		this.toData = project;
 		this.toObject = embed;
@@ -56,7 +55,7 @@ public class PepClassDescriptor<T> {
 	/**
 	 * @return The class this descriptor is for.
 	 */
-	public Class<T> typeClass() {
+	public Class<?> typeClass() {
 		return typeClass;
 	}
 
@@ -65,6 +64,10 @@ public class PepClassDescriptor<T> {
 	 */
 	public Class<?> dataClass() {
 		return dataClass;
+	}
+
+	public boolean isData() {
+		return typeClass == dataClass;
 	}
 
 	/**
@@ -91,8 +94,8 @@ public class PepClassDescriptor<T> {
 	/**
 	 * @return The list of fields and their types returned by the embed function.
 	 */
-	public PepFieldDescriptor[] fields() {
-		return fields;
+	public PepDataComponent[] dataComponents() {
+		return dataComponents;
 	}
 
 }

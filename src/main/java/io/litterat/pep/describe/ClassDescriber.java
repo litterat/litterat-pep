@@ -15,10 +15,10 @@
  */
 package io.litterat.pep.describe;
 
-import io.litterat.pep.PepFieldDescriptor;
+import io.litterat.pep.PepDataComponent;
 import io.litterat.pep.PepException;
 
 public interface ClassDescriber {
 
-	PepFieldDescriptor[] describe(Class<?> clss) throws PepException;
+	PepDataComponent[] describe(Class<?> clss) throws PepException;
 }

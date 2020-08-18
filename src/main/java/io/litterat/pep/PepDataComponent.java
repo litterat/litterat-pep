@@ -17,7 +17,12 @@ package io.litterat.pep;
 
 import java.lang.invoke.MethodHandle;
 
-public class PepFieldDescriptor {
+/**
+ * 
+ * This is analagous to the Java reflection RecordComponent class but for Data classes.
+ *
+ */
+public class PepDataComponent {
 
 	// name of the field
 	private final String name;
@@ -29,14 +34,14 @@ public class PepFieldDescriptor {
 	private final boolean isOptional;
 
 	// accessor read handle. signature: type t = object.getT();
-	private final MethodHandle readHandle;
+	private final MethodHandle accessor;
 
-	public PepFieldDescriptor(String name, Class<?> type, boolean isOptional, MethodHandle readHandle,
+	public PepDataComponent(String name, Class<?> type, boolean isOptional, MethodHandle readHandle,
 			MethodHandle writeHandle, int ctorArg) {
 		this.name = name;
 		this.type = type;
 		this.isOptional = isOptional;
-		this.readHandle = readHandle;
+		this.accessor = readHandle;
 	}
 
 	public String name() {
@@ -52,7 +57,7 @@ public class PepFieldDescriptor {
 	}
 
 	public MethodHandle accessor() {
-		return readHandle;
+		return accessor;
 	}
 
 }

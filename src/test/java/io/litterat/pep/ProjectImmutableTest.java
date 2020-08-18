@@ -24,23 +24,23 @@ public class ProjectImmutableTest {
 
 	@Test
 	public void simpleImmutableTest() throws Throwable {
-		PepContext context = new PepContext();
-		PepClassDescriptor<ProjectImmutable> descriptor = context.getDescriptor(ProjectImmutable.class);
+		PepContext context = new PepContext.Builder().build();
+		PepDataClass descriptor = context.getDescriptor(ProjectImmutable.class);
 		Assertions.assertNotNull(descriptor);
 
 		Assertions.assertEquals(ProjectImmutable.class, descriptor.typeClass());
 		Assertions.assertEquals(ProjectImmutable.ProjectImmutableData.class, descriptor.dataClass());
 
-		PepFieldDescriptor[] fields = descriptor.fields();
+		PepDataComponent[] fields = descriptor.dataComponents();
 		Assertions.assertNotNull(fields);
 		Assertions.assertEquals(2, fields.length);
 
-		PepFieldDescriptor fieldX = fields[0];
+		PepDataComponent fieldX = fields[0];
 		Assertions.assertEquals("x", fieldX.name());
 		Assertions.assertEquals(false, fieldX.isOptional());
 		Assertions.assertEquals(int.class, fieldX.type());
 
-		PepFieldDescriptor fieldY = fields[1];
+		PepDataComponent fieldY = fields[1];
 		Assertions.assertEquals("y", fieldY.name());
 		Assertions.assertEquals(false, fieldY.isOptional());
 		Assertions.assertEquals(int.class, fieldY.type());
