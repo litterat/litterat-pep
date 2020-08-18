@@ -22,7 +22,7 @@ public class PepContext {
 		PepContextResolver resolver;
 
 		public Builder() {
-			this.resolver = new DefaultResolver();
+			this.resolver = null;
 		}
 
 		Builder resolver(PepContextResolver resolver) {
@@ -36,7 +36,40 @@ public class PepContext {
 	}
 
 	private PepContext(Builder builder) {
-		this.resolver = builder.resolver;
+
+		if (builder.resolver != null) {
+			this.resolver = builder.resolver;
+		} else {
+			this.resolver = new DefaultResolver(this);
+		}
+
+		try {
+			registerAtom(Boolean.class);
+			registerAtom(boolean.class);
+			registerAtom(Character.class);
+			registerAtom(char.class);
+			registerAtom(Byte.class);
+			registerAtom(byte.class);
+			registerAtom(Short.class);
+			registerAtom(short.class);
+			registerAtom(Integer.class);
+			registerAtom(int.class);
+			registerAtom(Long.class);
+			registerAtom(long.class);
+			registerAtom(Float.class);
+			registerAtom(float.class);
+			registerAtom(Double.class);
+			registerAtom(double.class);
+			registerAtom(Void.class);
+			registerAtom(void.class);
+		} catch (PepException e) {
+			throw new IllegalArgumentException();
+		}
+
+	}
+
+	public void registerAtom(Class<?> targetClass) throws PepException {
+		register(targetClass, new PepDataClass(targetClass));
 	}
 
 	public PepDataClass getDescriptor(Class<?> targetClass) throws PepException {
@@ -68,6 +101,12 @@ public class PepContext {
 
 	private static class DefaultResolver implements PepContextResolver {
 
+		private final PepContext context;
+
+		public DefaultResolver(PepContext context) {
+			this.context = context;
+		}
+
 		@Override
 		public PepDataClass resolve(Class<?> targetClass) throws PepException {
 			PepDataClass descriptor = null;
@@ -76,7 +115,8 @@ public class PepContext {
 			if (targetClass.isInterface() || targetClass.isArray() || targetClass.isAnonymousClass()
 					|| targetClass.isEnum() || targetClass.isAnnotation() || targetClass.isPrimitive()
 					|| targetClass.isSynthetic()) {
-				throw new IllegalArgumentException("Not able to describe class for serialization");
+				throw new IllegalArgumentException(
+						String.format("Not able to describe class for serialization: %s", targetClass));
 			}
 
 			if (ToData.class.isAssignableFrom(targetClass)) {
@@ -118,7 +158,7 @@ public class PepContext {
 
 			} else {
 
-				ByteCodeDescriber describer = new ByteCodeDescriber();
+				ByteCodeDescriber describer = new ByteCodeDescriber(context);
 
 				MethodHandle constructor = null;
 				try {

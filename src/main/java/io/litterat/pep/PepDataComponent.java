@@ -30,16 +30,19 @@ public class PepDataComponent {
 	// type of the field
 	private final Class<?> type;
 
+	private final PepDataClass dataClass;
+
 	// is the field optional
 	private final boolean isOptional;
 
 	// accessor read handle. signature: type t = object.getT();
 	private final MethodHandle accessor;
 
-	public PepDataComponent(String name, Class<?> type, boolean isOptional, MethodHandle readHandle,
-			MethodHandle writeHandle, int ctorArg) {
+	public PepDataComponent(String name, Class<?> type, PepDataClass dataClass, boolean isOptional,
+			MethodHandle readHandle, MethodHandle writeHandle, int ctorArg) {
 		this.name = name;
 		this.type = type;
+		this.dataClass = dataClass;
 		this.isOptional = isOptional;
 		this.accessor = readHandle;
 	}
@@ -50,6 +53,10 @@ public class PepDataComponent {
 
 	public Class<?> type() {
 		return type;
+	}
+
+	public PepDataClass dataClass() {
+		return dataClass;
 	}
 
 	public boolean isOptional() {

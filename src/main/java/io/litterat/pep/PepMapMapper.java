@@ -31,10 +31,11 @@ public class PepMapMapper {
 			PepDataComponent field = fields[x];
 
 			Object v = field.accessor().invoke(data);
-			// TODO need to check correctly if this should be recursive.
-			// if (v != null && !field.getClass().isPrimitive()) {
-			// v = toMap(v);
-			// }
+
+			if (v != null & !field.dataClass().isAtom()) {
+				v = toMap(v);
+			}
+
 			map.put(field.name(), v);
 		}
 		return map;
@@ -55,8 +56,7 @@ public class PepMapMapper {
 
 			Object v = map.get(field.name());
 
-			// TODO correctly check field informatoin instead.
-			if (v instanceof Map) {
+			if (!field.dataClass().isAtom()) {
 				v = toObject(field.getClass(), (Map<String, Object>) v);
 			}
 			construct[x] = v;

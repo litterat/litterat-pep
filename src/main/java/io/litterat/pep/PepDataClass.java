@@ -42,14 +42,31 @@ public class PepDataClass {
 	// All fields in the projected class.
 	private final PepDataComponent[] dataComponents;
 
+	// Target class is data. No extract/inject required.
+	private final boolean isData;
+
+	// An atom is any value that is passed through as is.
+	private final boolean isAtom;
+
 	public PepDataClass(Class<?> targetType, Class<?> serialType, MethodHandle constructor, MethodHandle project,
-			MethodHandle embed, PepDataComponent[] fields) {
+			MethodHandle embed, PepDataComponent[] fields, boolean isAtom) {
 		this.typeClass = targetType;
 		this.dataClass = serialType;
 		this.dataComponents = fields;
 		this.constructor = constructor;
 		this.toData = project;
 		this.toObject = embed;
+		this.isData = (targetType == serialType);
+		this.isAtom = isAtom;
+	}
+
+	public PepDataClass(Class<?> targetType, Class<?> serialType, MethodHandle constructor, MethodHandle project,
+			MethodHandle embed, PepDataComponent[] fields) {
+		this(targetType, serialType, constructor, project, embed, fields, false);
+	}
+
+	public PepDataClass(Class<?> targetType) {
+		this(targetType, null, null, null, null, null, true);
 	}
 
 	/**
@@ -67,7 +84,11 @@ public class PepDataClass {
 	}
 
 	public boolean isData() {
-		return typeClass == dataClass;
+		return isData;
+	}
+
+	public boolean isAtom() {
+		return isAtom;
 	}
 
 	/**

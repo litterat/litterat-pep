@@ -33,8 +33,10 @@ import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
-import io.litterat.pep.PepException;
+import io.litterat.pep.PepContext;
+import io.litterat.pep.PepDataClass;
 import io.litterat.pep.PepDataComponent;
+import io.litterat.pep.PepException;
 
 public class ByteCodeDescriber implements ClassDescriber {
 
@@ -50,6 +52,12 @@ public class ByteCodeDescriber implements ClassDescriber {
 		public String toString() {
 			return "field: " + name + " type:" + type.getName() + " isOptional: " + isOptional + " arg: " + arg;
 		}
+	}
+
+	private final PepContext context;
+
+	public ByteCodeDescriber(PepContext context) {
+		this.context = context;
 	}
 
 	@Override
@@ -98,8 +106,10 @@ public class ByteCodeDescriber implements ClassDescriber {
 
 				MethodHandle accessor = MethodHandles.lookup().unreflect(info.accessor);
 
-				fieldDescriptors[x] = new PepDataComponent(info.name, info.type, info.isOptional, accessor, null,
-						info.arg);
+				PepDataClass dataClass = context.getDescriptor(info.type);
+
+				fieldDescriptors[x] = new PepDataComponent(info.name, info.type, dataClass, info.isOptional, accessor,
+						null, info.arg);
 			}
 
 			return fieldDescriptors;
