@@ -114,8 +114,9 @@ public class PepArrayMapper {
 	 * @param objectConstructor
 	 * @param fields
 	 * @return a single MethodHandle to generate target object from Object[]
+	 * @throws PepException 
 	 */
-	private MethodHandle createEmbedFunction(PepDataClass dataClass) {
+	private MethodHandle createEmbedFunction(PepDataClass dataClass) throws PepException {
 
 		// (Object[]):serialClass -> ctor(Object[])
 		MethodHandle create = createEmbedConstructor(dataClass);
@@ -130,8 +131,9 @@ public class PepArrayMapper {
 	 * @param objectConstructor
 	 * @param fields
 	 * @return
+	 * @throws PepException
 	 */
-	private MethodHandle createEmbedConstructor(PepDataClass dataClass) {
+	private MethodHandle createEmbedConstructor(PepDataClass dataClass) throws PepException {
 		MethodHandle result = dataClass.constructor();
 
 		PepDataComponent[] fields = dataClass.dataComponents();
@@ -151,7 +153,12 @@ public class PepArrayMapper {
 			MethodHandle arrayIndexGetter = MethodHandles.collectArguments(arrayGetter, 1, index)
 					.asType(MethodType.methodType(field.type(), Object[].class));
 
-			// TODO if child is Data then need to recursively call toObject.
+			// Pass the object through toObject if it isn't an atom.
+			if (!field.dataClass().isAtom()) {
+				ArrayFunctions af = this.getFunctions(field.dataClass().typeClass());
+
+				arrayIndexGetter = MethodHandles.collectArguments(af.toObject, 0, arrayIndexGetter);
+			}
 
 			// ()-> constructor( ..., values[inputIndex] , ... )
 			result = MethodHandles.collectArguments(result, arg, arrayIndexGetter);
@@ -187,8 +194,9 @@ public class PepArrayMapper {
 	 * 
 	 * @param fields
 	 * @return
+	 * @throws PepException 
 	 */
-	private MethodHandle createProjectFunction(PepDataClass dataClass) {
+	private MethodHandle createProjectFunction(PepDataClass dataClass) throws PepException {
 
 		// (int):Object[] -> new Object[int]
 		MethodHandle createArray = MethodHandles.arrayConstructor(Object[].class);
@@ -216,8 +224,9 @@ public class PepArrayMapper {
 	 * 
 	 * @param fields
 	 * @return
+	 * @throws PepException
 	 */
-	private MethodHandle createProjectGetters(PepDataClass dataClass) {
+	private MethodHandle createProjectGetters(PepDataClass dataClass) throws PepException {
 
 		// (object[]):object[] -> return object[];
 		MethodHandle identity = MethodHandles.identity(Object[].class);
@@ -243,7 +252,12 @@ public class PepArrayMapper {
 			// (object) -> (Object) object.getter()
 			MethodHandle fieldBox = field.accessor().asType(MethodType.methodType(Object.class, dataClass.dataClass()));
 
-			// TODO check if this needs to recursively call toArray and modify methodhandle accordingly.
+			// Pass the object through toArray if it isn't an atom.
+			if (!field.dataClass().isAtom()) {
+				ArrayFunctions af = this.getFunctions(field.dataClass().typeClass());
+
+				fieldBox = MethodHandles.collectArguments(af.toArray, 0, fieldBox);
+			}
 
 			// (value[],object) -> value[inputIndex] = object.getter()
 			MethodHandle arrayValueSetter = MethodHandles.collectArguments(arrayIndexSetter, 1, fieldBox);
