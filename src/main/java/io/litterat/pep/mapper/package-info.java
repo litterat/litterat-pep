@@ -13,11 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.litterat.pep;
-
-public interface ToDataObject<S, B> {
-
-	public S toData(B b);
-
-	public B toObject(S s);
-}
+package io.litterat.pep.mapper;
+/**
+ * 
+ * These are examples of how to use the Pep library.
+ * 
+ * @formatter:off
+ * 
+ * PepArrayMapper - converts to and from an Object[] 
+ * PepMapMapper - converts to and from a Map<String,Object>
+ * 
+ * @formatter:on
+ */

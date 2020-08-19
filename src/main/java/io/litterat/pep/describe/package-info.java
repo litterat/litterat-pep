@@ -13,9 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.litterat.pep;
-
-public interface PepContextResolver {
-
-	PepDataClass resolve(PepContext context, Class<?> clss) throws PepException;
-}
+package io.litterat.pep.describe;
+/**
+ * 
+ * 
+ * 
+ * @formatter:off
+ * 
+ * Class describers attempt to discover if a Class fits into one
+ * of the following categories
+ * 
+ * atom - Primitive or accepts single argument to construct.
+ * data - Has multiple values and tagged as data class.
+ * class with data - a class that produces a data class.
+ * class - A class that doesn't fit the previous three throw an exception.
+ * 
+ * @formatter:on
+ */

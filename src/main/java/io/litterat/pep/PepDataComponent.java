@@ -19,7 +19,7 @@ import java.lang.invoke.MethodHandle;
 
 /**
  * 
- * This is analagous to the Java reflection RecordComponent class but for Data classes.
+ * This is analogous to the Java reflection RecordComponent class but for Data classes.
  *
  */
 public class PepDataComponent {

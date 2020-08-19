@@ -18,6 +18,7 @@ package io.litterat.pep;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import io.litterat.pep.mapper.PepArrayMapper;
 import io.litterat.pep.projects.ProjectImmutable;
 
 public class ProjectImmutableTest {

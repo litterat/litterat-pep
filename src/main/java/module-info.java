@@ -14,6 +14,7 @@
 module io.litterat.pep {
 
 	exports io.litterat.pep;
+	exports io.litterat.pep.mapper;
 
 	requires org.objectweb.asm;
 	requires org.objectweb.asm.tree;

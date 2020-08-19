@@ -21,6 +21,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import io.litterat.pep.immutable.SimpleImmutable;
+import io.litterat.pep.mapper.PepArrayMapper;
+import io.litterat.pep.mapper.PepMapMapper;
 
 public class ImmutableDescriptorTest {
 

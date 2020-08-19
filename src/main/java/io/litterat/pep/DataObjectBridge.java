@@ -15,7 +15,9 @@
  */
 package io.litterat.pep;
 
-public interface PepContextResolver {
+public interface DataObjectBridge<S, B> {
 
-	PepDataClass resolve(PepContext context, Class<?> clss) throws PepException;
+	public S toData(B b);
+
+	public B toObject(S s);
 }

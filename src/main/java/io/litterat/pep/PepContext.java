@@ -55,7 +55,7 @@ public class PepContext {
 		if (builder.resolver != null) {
 			this.resolver = builder.resolver;
 		} else {
-			this.resolver = new DefaultResolver(this);
+			this.resolver = new DefaultResolver();
 		}
 
 		try {
@@ -76,7 +76,7 @@ public class PepContext {
 			registerAtom(Double.class);
 			registerAtom(double.class);
 			registerAtom(Void.class);
-			registerAtom(void.class);
+			registerAtom(String.class);
 		} catch (PepException e) {
 			throw new IllegalArgumentException();
 		}
@@ -91,7 +91,7 @@ public class PepContext {
 
 		PepDataClass descriptor = descriptors.get(targetClass);
 		if (descriptor == null) {
-			descriptor = resolver.resolve(targetClass);
+			descriptor = resolver.resolve(this, targetClass);
 			if (descriptor == null) {
 				throw new PepException(
 						String.format("Unable to find suitable data descriptor for class: %s", targetClass.getName()));
@@ -116,14 +116,8 @@ public class PepContext {
 
 	private static class DefaultResolver implements PepContextResolver {
 
-		private final PepContext context;
-
-		public DefaultResolver(PepContext context) {
-			this.context = context;
-		}
-
 		@Override
-		public PepDataClass resolve(Class<?> targetClass) throws PepException {
+		public PepDataClass resolve(PepContext context, Class<?> targetClass) throws PepException {
 			PepDataClass descriptor = null;
 
 			// Unable to describe interfaces, arrays, etc.
@@ -150,7 +144,7 @@ public class PepContext {
 								MethodHandle project = MethodHandles.lookup()
 										.unreflect(targetClass.getMethod("toData"));
 
-								PepDataClass serialDescriptor = resolve(serialClass);
+								PepDataClass serialDescriptor = resolve(context, serialClass);
 
 								MethodHandle constructor = null;
 								try {

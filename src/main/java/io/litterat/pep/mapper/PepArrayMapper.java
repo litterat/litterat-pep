@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.litterat.pep;
+package io.litterat.pep.mapper;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -21,6 +21,11 @@ import java.lang.invoke.MethodType;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+
+import io.litterat.pep.PepContext;
+import io.litterat.pep.PepDataClass;
+import io.litterat.pep.PepDataComponent;
+import io.litterat.pep.PepException;
 
 public class PepArrayMapper {
 
@@ -153,11 +158,21 @@ public class PepArrayMapper {
 			MethodHandle arrayIndexGetter = MethodHandles.collectArguments(arrayGetter, 1, index)
 					.asType(MethodType.methodType(field.type(), Object[].class));
 
-			// Pass the object through toObject if it isn't an atom.
-			if (!field.dataClass().isAtom()) {
-				ArrayFunctions af = this.getFunctions(field.dataClass().typeClass());
+			// TODO Needs to be check for nulls before calling toObject or array to Object.
 
-				arrayIndexGetter = MethodHandles.collectArguments(af.toObject, 0, arrayIndexGetter);
+			// Pass the object through toObject if it isn't an atom.
+			PepDataClass fieldDataClass = field.dataClass();
+			if (fieldDataClass.isAtom()) {
+
+				arrayIndexGetter = MethodHandles.collectArguments(fieldDataClass.toObject(), 0, arrayIndexGetter);
+			} else {
+				if (field.dataClass().typeClass() == dataClass.typeClass()) {
+					throw new IllegalArgumentException("Recursive structures not yet supported for array mapper");
+				} else {
+					ArrayFunctions af = this.getFunctions(field.dataClass().typeClass());
+
+					arrayIndexGetter = MethodHandles.collectArguments(af.toObject, 0, arrayIndexGetter);
+				}
 			}
 
 			// ()-> constructor( ..., values[inputIndex] , ... )
@@ -249,15 +264,24 @@ public class PepArrayMapper {
 			// (value[],v) -> value[inputIndex] = v
 			MethodHandle arrayIndexSetter = MethodHandles.collectArguments(arraySetter, 1, index);
 
+			PepDataClass fieldDataClass = field.dataClass();
+
 			// (object) -> (Object) object.getter()
-			MethodHandle fieldBox = field.accessor().asType(MethodType.methodType(Object.class, dataClass.dataClass()));
+			MethodHandle fieldBox = field.accessor();
 
 			// Pass the object through toArray if it isn't an atom.
-			if (!field.dataClass().isAtom()) {
-				ArrayFunctions af = this.getFunctions(field.dataClass().typeClass());
-
-				fieldBox = MethodHandles.collectArguments(af.toArray, 0, fieldBox);
+			if (fieldDataClass.isAtom()) {
+				fieldBox = MethodHandles.collectArguments(fieldDataClass.toData(), 0, fieldBox);
+			} else {
+				if (field.dataClass().typeClass() == dataClass.typeClass()) {
+					throw new IllegalArgumentException("Recursive structures not yet supported for array mapper");
+				} else {
+					ArrayFunctions af = this.getFunctions(field.dataClass().typeClass());
+					fieldBox = MethodHandles.collectArguments(af.toArray, 0, fieldBox);
+				}
 			}
+
+			fieldBox = fieldBox.asType(MethodType.methodType(Object.class, dataClass.dataClass()));
 
 			// (value[],object) -> value[inputIndex] = object.getter()
 			MethodHandle arrayValueSetter = MethodHandles.collectArguments(arrayIndexSetter, 1, fieldBox);

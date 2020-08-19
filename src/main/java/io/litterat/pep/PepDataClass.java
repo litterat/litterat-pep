@@ -16,6 +16,7 @@
 package io.litterat.pep;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 
 /**
  * A PepClassDescriptor provides a descriptor for a classes projected/embedded pair for use in
@@ -48,25 +49,36 @@ public class PepDataClass {
 	// An atom is any value that is passed through as is.
 	private final boolean isAtom;
 
-	public PepDataClass(Class<?> targetType, Class<?> serialType, MethodHandle constructor, MethodHandle project,
-			MethodHandle embed, PepDataComponent[] fields, boolean isAtom) {
+	public PepDataClass(Class<?> targetType, Class<?> serialType, MethodHandle constructor, MethodHandle toData,
+			MethodHandle toObject, PepDataComponent[] fields, boolean isAtom) {
 		this.typeClass = targetType;
 		this.dataClass = serialType;
 		this.dataComponents = fields;
 		this.constructor = constructor;
-		this.toData = project;
-		this.toObject = embed;
+		this.toData = toData;
+		this.toObject = toObject;
 		this.isData = (targetType == serialType);
 		this.isAtom = isAtom;
 	}
 
-	public PepDataClass(Class<?> targetType, Class<?> serialType, MethodHandle constructor, MethodHandle project,
-			MethodHandle embed, PepDataComponent[] fields) {
-		this(targetType, serialType, constructor, project, embed, fields, false);
+	public PepDataClass(Class<?> targetType, Class<?> serialType, MethodHandle constructor, MethodHandle toData,
+			MethodHandle toObject, PepDataComponent[] fields) {
+		this(targetType, serialType, constructor, toData, toObject, fields, false);
 	}
 
+	// An Atom uses identity function for toData/toObject and construct.
 	public PepDataClass(Class<?> targetType) {
-		this(targetType, null, null, null, null, null, true);
+		this(targetType, targetType, identity(targetType), identity(targetType), identity(targetType),
+				new PepDataComponent[0], true);
+	}
+
+	// An Atom with conversion functions. e.g. String <--> UUID
+	public PepDataClass(Class<?> targetType, MethodHandle toData, MethodHandle toObject) {
+		this(targetType, targetType, identity(targetType), toData, toObject, new PepDataComponent[0], true);
+	}
+
+	private static MethodHandle identity(Class<?> targetType) {
+		return MethodHandles.identity(targetType);
 	}
 
 	/**

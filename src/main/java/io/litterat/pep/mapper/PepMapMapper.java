@@ -13,18 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.litterat.pep;
+package io.litterat.pep.mapper;
 
 import java.lang.invoke.MethodHandle;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import io.litterat.pep.PepContext;
+import io.litterat.pep.PepDataClass;
+import io.litterat.pep.PepDataComponent;
+
 public class PepMapMapper {
 
 	private final PepContext context;
-
-	// private final MethodHandle constructor;
 
 	public PepMapMapper(PepContext context) {
 		this.context = context;
@@ -47,8 +49,15 @@ public class PepMapMapper {
 
 			Object v = field.accessor().invoke(data);
 
-			if (v != null & !field.dataClass().isAtom()) {
-				v = toMap(v);
+			// Recursively convert object to map.
+			if (v != null) {
+				PepDataClass fieldDataClass = field.dataClass();
+
+				if (fieldDataClass.isAtom()) {
+					v = fieldDataClass.toData().invoke(v);
+				} else {
+					v = toMap(v);
+				}
 			}
 
 			map.put(field.name(), v);
@@ -71,8 +80,15 @@ public class PepMapMapper {
 
 			Object v = map.get(field.name());
 
-			if (!field.dataClass().isAtom()) {
-				v = toObject(field.getClass(), (Map<String, Object>) v);
+			// Recursively convert maps back to objects.
+			if (v != null) {
+				PepDataClass fieldDataClass = field.dataClass();
+
+				if (fieldDataClass.isAtom()) {
+					v = fieldDataClass.toObject().invoke(v);
+				} else {
+					v = toObject(field.getClass(), (Map<String, Object>) v);
+				}
 			}
 			construct[x] = v;
 		}
