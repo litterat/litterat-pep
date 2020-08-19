@@ -15,16 +15,33 @@
  */
 package io.litterat.pep;
 
+import java.io.IOException;
+import java.util.Map;
+
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.litterat.pep.mapper.PepArrayMapper;
+import io.litterat.pep.mapper.PepMapMapper;
 import io.litterat.pep.projects.ProjectImmutable;
 
 public class ProjectImmutableTest {
 
+	final static int TEST_X = 1;
+	final static int TEST_Y = 2;
+
+	ProjectImmutable test = new ProjectImmutable(TEST_X, TEST_Y);
+
+	PepContext context;
+
+	@BeforeEach
+	public void setup() {
+		context = new PepContext.Builder().build();
+	}
+
 	@Test
-	public void simpleImmutableTest() throws Throwable {
+	public void checkDescriptor() throws Throwable {
 		PepContext context = new PepContext.Builder().build();
 		PepDataClass descriptor = context.getDescriptor(ProjectImmutable.class);
 		Assertions.assertNotNull(descriptor);
@@ -45,11 +62,10 @@ public class ProjectImmutableTest {
 		Assertions.assertEquals("y", fieldY.name());
 		Assertions.assertEquals(false, fieldY.isOptional());
 		Assertions.assertEquals(int.class, fieldY.type());
+	}
 
-		final int xValue = 1;
-		final int yValue = 2;
-
-		ProjectImmutable test = new ProjectImmutable(xValue, yValue);
+	@Test
+	public void testToArray() throws Throwable {
 
 		// project to an array.
 		PepArrayMapper arrayMap = new PepArrayMapper(context);
@@ -57,15 +73,41 @@ public class ProjectImmutableTest {
 		Assertions.assertNotNull(values);
 
 		// rebuild as an object.
-		ProjectImmutable embed = arrayMap.toObject(ProjectImmutable.class, values);
-		Assertions.assertNotNull(embed);
-		if (!(embed instanceof ProjectImmutable)) {
-			Assertions.fail();
-		}
+		ProjectImmutable object = arrayMap.toObject(ProjectImmutable.class, values);
 
-		ProjectImmutable si = embed;
-		Assertions.assertEquals(xValue, si.x());
-		Assertions.assertEquals(yValue, si.y());
+		// Validate
+		Assertions.assertNotNull(object);
+		Assertions.assertTrue(object instanceof ProjectImmutable);
+		Assertions.assertEquals(TEST_X, test.x());
+		Assertions.assertEquals(TEST_Y, test.y());
+
+	}
+
+	@Test
+	public void testToMap() throws Throwable {
+		PepMapMapper mapMapper = new PepMapMapper(context);
+		Map<String, Object> map = mapMapper.toMap(test);
+
+		ProjectImmutable object = (ProjectImmutable) mapMapper.toObject(ProjectImmutable.class, map);
+
+		// validate result.
+		Assertions.assertNotNull(object);
+		Assertions.assertTrue(object instanceof ProjectImmutable);
+		Assertions.assertEquals(TEST_X, object.x());
+		Assertions.assertEquals(TEST_Y, object.y());
+	}
+
+	@Test
+	public void testMapToObjectException() throws Throwable {
+		PepMapMapper mapMapper = new PepMapMapper(context);
+		Map<String, Object> map = mapMapper.toMap(test);
+
+		// corrupting the map by putting an invalid value for x.
+		map.put("x", "error");
+
+		Assertions.assertThrows(IOException.class, () -> {
+			mapMapper.toObject(ProjectImmutable.class, map);
+		});
 
 	}
 }

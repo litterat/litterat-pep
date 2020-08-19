@@ -27,6 +27,17 @@ import io.litterat.pep.PepDataClass;
 import io.litterat.pep.PepDataComponent;
 import io.litterat.pep.PepException;
 
+/**
+ * Sample showing how to use the Pep library to convert an Object to/from Object[]
+ * 
+ * This is intentionally using MethodHandles throughout to demonstrate pre-building method handles for
+ * each type. This is the method likely to be used by serialization libraries to improve performance.
+ * 
+ * TODO add try/catch/throw around conversions 
+ * TODO deal with arrays 
+ * TODO deal with null values correctly
+ *
+ */
 public class PepArrayMapper {
 
 	private final PepContext context;
@@ -105,16 +116,12 @@ public class PepArrayMapper {
 	/**
 	 * Creates the embed method handle. Will create the serial instance, call setters, and class the
 	 * embed method handle to create the target object in a single call. This is equivalent to:
-	 * 
-	 * @formatter:off
-	 * 
+	
 	 * // fields mapped as required from value array.
 	 * T t = new EmbedClass( values[0], values[1], ... ); 
 	 * 
 	 * // calls the embed function on the object.
 	 * return embed( t ); 
-	 * 
-	 * @formatter:on
 	 * 
 	 * @param objectConstructor
 	 * @param fields
@@ -184,8 +191,7 @@ public class PepArrayMapper {
 		int paramCount = dataClass.constructor().type().parameterCount();
 		if (paramCount > 0) {
 			int[] permuteInput = new int[paramCount];
-			result = MethodHandles.permuteArguments(result,
-					MethodType.methodType(dataClass.dataClass(), Object[].class), permuteInput);
+			result = MethodHandles.permuteArguments(result, MethodType.methodType(dataClass.dataClass(), Object[].class), permuteInput);
 		}
 		return result;
 	}
@@ -194,18 +200,14 @@ public class PepArrayMapper {
 	 * create project takes a target object and returns an Object[] of values. Not yet complete. Haven't
 	 * worked out how to re-use the Object[] in return value.
 	 * 
-	 * @formatter:off
+	 * // Project the instance to the embedded version.
+	 * EmbeddedClass e = project.invoke(o)
 	 * 
-     * // Project the instance to the embedded version.
-     * EmbeddedClass e = project.invoke(o)
-     * 
-     * // Extract the values from the projected object.
-     * Object[] values = new Object[fields.length];
-     * 
-     * // Call the various accessors to fill in the array and return values.
+	 * // Extract the values from the projected object.
+	 * Object[] values = new Object[fields.length];
+	 * 
+	 * // Call the various accessors to fill in the array and return values.
 	 * return getter.invoke(e, values );
-
-	 * @formatter:on
 	 * 
 	 * @param fields
 	 * @return
@@ -268,6 +270,8 @@ public class PepArrayMapper {
 
 			// (object) -> (Object) object.getter()
 			MethodHandle fieldBox = field.accessor();
+
+			// TODO needs to deal with null here.
 
 			// Pass the object through toArray if it isn't an atom.
 			if (fieldDataClass.isAtom()) {
