@@ -13,22 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.litterat.pep;
+package io.litterat.pep.data;
 
-import static java.lang.annotation.ElementType.FIELD;
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.ElementType.PARAMETER;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
+import io.litterat.pep.PepData;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+public class SimpleImmutable {
 
-@Retention(RUNTIME)
-@Target({ FIELD, METHOD, PARAMETER })
-public @interface PepField {
-	String name() default "";
+	private final int x;
+	private final int y;
 
-	Class<?> type();
+	@PepData
+	public SimpleImmutable(int x, int y) {
+		this.x = x;
+		this.y = y;
+	}
 
-	boolean optional() default false;
+	public int x() {
+		return x;
+	}
+
+	public int y() {
+		return y;
+	}
+
 }

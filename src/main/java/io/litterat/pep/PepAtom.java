@@ -13,26 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.litterat.pep.pojo;
+package io.litterat.pep;
 
-/**
- * 
- * This is a very simple sample.
- *
- */
-public class SimplePojo {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-	private int fieldOne;
-
-	public SimplePojo() {
-
-	}
-
-	public void setFieldOne(int x) {
-		this.fieldOne = x;
-	}
-
-	public int getFieldOne() {
-		return fieldOne;
-	}
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ ElementType.CONSTRUCTOR, ElementType.TYPE, ElementType.METHOD })
+public @interface PepAtom {
 }

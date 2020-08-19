@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.litterat.pep.projects;
+package io.litterat.pep.data;
 
+import io.litterat.pep.PepData;
 import io.litterat.pep.ToData;
-import io.litterat.pep.projects.ProjectImmutable.ProjectImmutableData;
+import io.litterat.pep.data.ProjectImmutable.ProjectImmutableData;
 
 public class ProjectImmutable implements ToData<ProjectImmutableData> {
 
@@ -48,6 +49,7 @@ public class ProjectImmutable implements ToData<ProjectImmutableData> {
 		this.y = y;
 	}
 
+	@PepData
 	public ProjectImmutable(ProjectImmutableData data) {
 		this.x = data.x;
 		this.y = data.y;

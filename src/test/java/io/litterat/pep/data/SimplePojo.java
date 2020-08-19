@@ -13,24 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.litterat.pep.immutable;
+package io.litterat.pep.data;
 
-public class SimpleImmutable {
+import io.litterat.pep.PepData;
 
-	private final int x;
-	private final int y;
+/**
+ * 
+ * This is a very simple sample.
+ *
+ */
 
-	public SimpleImmutable(int x, int y) {
-		this.x = x;
-		this.y = y;
+@PepData
+public class SimplePojo {
+
+	private int fieldOne;
+
+	public void setFieldOne(int x) {
+		this.fieldOne = x;
 	}
 
-	public int x() {
-		return x;
+	public int getFieldOne() {
+		return fieldOne;
 	}
-
-	public int y() {
-		return y;
-	}
-
 }

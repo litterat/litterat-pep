@@ -44,13 +44,12 @@ public class ByteCodeDescriber implements ClassDescriber {
 	private class FieldInfo {
 		String name;
 		Class<?> type;
-		boolean isOptional;
 		Method accessor;
 		int arg;
 
 		@Override
 		public String toString() {
-			return "field: " + name + " type:" + type.getName() + " isOptional: " + isOptional + " arg: " + arg;
+			return "field: " + name + " type:" + type.getName() + " arg: " + arg;
 		}
 	}
 
@@ -108,8 +107,7 @@ public class ByteCodeDescriber implements ClassDescriber {
 
 				PepDataClass dataClass = context.getDescriptor(info.type);
 
-				fieldDescriptors[x] = new PepDataComponent(info.name, info.type, dataClass, info.isOptional, accessor,
-						null, info.arg);
+				fieldDescriptors[x] = new PepDataComponent(info.name, info.type, dataClass, accessor, null, info.arg);
 			}
 
 			return fieldDescriptors;
@@ -135,12 +133,6 @@ public class ByteCodeDescriber implements ClassDescriber {
 			fields[x] = new FieldInfo();
 			fields[x].name = f.getName();
 			fields[x].type = f.getType();
-			if (f.getType().isPrimitive()) {
-				fields[x].isOptional = false;
-			} else {
-				fields[x].isOptional = false;
-			}
-
 			fieldMap.put(f.getName(), fields[x]);
 
 		}
@@ -209,8 +201,7 @@ public class ByteCodeDescriber implements ClassDescriber {
 	 * @return field name
 	 * @throws NoSuchMethodException
 	 */
-	private String examineAccessor(Class<?> clss, Map<String, FieldInfo> fieldMap, MethodNode method)
-			throws NoSuchMethodException {
+	private String examineAccessor(Class<?> clss, Map<String, FieldInfo> fieldMap, MethodNode method) throws NoSuchMethodException {
 		boolean foundLoadThis = false;
 		String lastField = null;
 

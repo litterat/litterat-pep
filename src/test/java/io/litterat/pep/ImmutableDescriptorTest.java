@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.litterat.pep.immutable.SimpleImmutable;
+import io.litterat.pep.data.SimpleImmutable;
 import io.litterat.pep.mapper.PepArrayMapper;
 import io.litterat.pep.mapper.PepMapMapper;
 
@@ -37,7 +37,7 @@ public class ImmutableDescriptorTest {
 
 	@BeforeEach
 	public void setup() {
-		context = new PepContext.Builder().build();
+		context = PepContext.builder().build();
 	}
 
 	@Test
@@ -55,12 +55,10 @@ public class ImmutableDescriptorTest {
 
 		PepDataComponent fieldX = fields[0];
 		Assertions.assertEquals("x", fieldX.name());
-		Assertions.assertEquals(false, fieldX.isOptional());
 		Assertions.assertEquals(int.class, fieldX.type());
 
 		PepDataComponent fieldY = fields[1];
 		Assertions.assertEquals("y", fieldY.name());
-		Assertions.assertEquals(false, fieldY.isOptional());
 		Assertions.assertEquals(int.class, fieldY.type());
 	}
 
