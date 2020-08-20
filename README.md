@@ -81,15 +81,19 @@ can be encoded and shared with readers of the data.
 The concept of the [embedded-projection](https://mail.openjdk.java.net/pipermail/amber-dev/2020-August/006445.html) pairs relates to the conversion of information between two domains; one richer than the other. A useful property of ep-pairs is that once a conversion from the richer domain to the other domain occurs the values can be mapped back and forth without further loss of information. This is a good framework from which to view
 the conversion of Java's object orientated domain to the serialization or data domain. We can view Java's object orientated domain complete with methods as being "live", while the data domain without methods as being "dead". A simple definition of ep-paris, is that there is a subset S(small) for any class B(big) that we want to convert.  We want to define two functions, **project** and **embed** to go to and from S (the structure to serialize) and B (the target object).
 
+```
 	project: B -> S
 	embed: S -> B
+```
 
 Looking closer at the two domains, Java's domain provides a very rich language of both data and methods defined by the language specification. However, the data domain can be classified simply as:
 
+```
     element: atom | tuple | array
     tuple: element*
     array: element[]
     atom: primitive
+```
     
 This simple definition of the data domain fits reasonably well to a wide variety of data structures and encoding. The samples provided by the library include array and map data structures. However, this could easily apply to most serialization encodings, and text based encodings such as XML and JSON. To convert between the two domains, ep-pairs for each of tuple, array and atom must be provided by Java. If this can be achieved in a simple and consistent way then the same library can be used for many different data encoding libraries.
 
@@ -113,14 +117,16 @@ In addition, patterns for classes that can not be directly mapped to a tuple can
 
 By breaking up the above into two groups and including the "identity" function in the second group, it is possible to create a standard ep-pair functions:
 
+```
    toData: extract(export(object))
    toObject: import(inject(data))
+```
 
 While the export and import function can easily standardised in the platform, there's still an issue with the implementation of extract and inject. Of all of the above, Java 14 Records provide the closest match to the data domain tuple. In addition, it also provides the meta data via reflection to provide a standard API. By creating a standardised extract/inject functions with corresponding reflection data we can standardise the above functions. All data classes must provide:
 
-  * n-argument constructor: A MethodHandle which creates the object with the given values.
-  * n-field components: A list of names, types and MethodHandle which returns the value of the component.
-  * export/import: Two MethodHandles which perform optional export/import of the tuple into the class.
+  * n-argument constructor - A MethodHandle which creates the object with the given values.
+  * n-field components - A list of names, types and MethodHandle which returns the value of the component.
+  * export/import - Two MethodHandles which perform optional export/import of the tuple into the class.
 
 
 The library accomplishes this by creating reflection based wrappers around each of the of the data styles:
@@ -128,7 +134,8 @@ The library accomplishes this by creating reflection based wrappers around each 
  * Constructor/Accessors - Uses byte code analysis to identify constructor parameters and accessors.
  * Setters/Getters - Uses MethodHandle folding to generate a synthetic constructor that sets all values.
  * Records - Maps directly to Records meta data and reflection methods.
- 
+
+This meta data is exposed via the PepDataClass and PepDataComponent classes.
  
 ### Atoms
 
