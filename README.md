@@ -13,10 +13,9 @@ Litterat:pep (projection-embedded pairs)
 
 This library is an implementation of some of the ideas written in [Towards Better Serialization](https://github.com/openjdk/amber-docs/blob/master/site/design-notes/towards-better-serialization.md) to create a class descriptor for use in serialization libraries and possibly other purposes. 
 It is not a serialization library in itself, but a way of describing how a class should be
-serialized. It is based on a discussion on the Java Amber mailing on [embedded-projection pairs](https://mail.openjdk.java.net/pipermail/amber-dev/2020-August/006445.html). 
+serialized. It is based on a discussion on the Java Amber mailing on [embedded-projection pairs](https://mail.openjdk.java.net/pipermail/amber-dev/2020-August/006445.html) and [object classification](https://mail.openjdk.java.net/pipermail/amber-dev/2020-August/006492.html). 
 
-The library is used to generate a class descriptor which can be used to **project** an object to a Object[]. The Object[]
-can then be used by an **embed** function to create the target object type with the values set. Usage of the library can be summed up with the following.
+The library is used to generate a class descriptor which can be used to for data extraction from objects. The aim for the library is that is possible to write mappings between objects and data simply. For example the sample PepArrayMapper is used as follows:
 
 
 ```java
@@ -24,21 +23,20 @@ can then be used by an **embed** function to create the target object type with 
 Point p1 = new Point(1,2);
 
 // Create a context and a descriptor for the target class.
-PepContext context = new PepContext();
-PepClassDescriptor pointDescriptor = context.getDescriptor(Point.class);
+PepContext context = PepContext.builder().build();
+
+// Create a mapper using the context.
+PepArrayMapper arrayMap = new PepArrayMapper(context);
 
 // Extract the values to an array
-Object[] values = pointDescriptor.project(p1);
+Object[] values = arrayMap.toData(p1);
 
 // Create the object from the values
-Point p2 = pointDescriptor.embed(values);
+Point p2 = arrayMap.toObject(values);
 ```
 
-The Object[] values  can then be used by the serialization library to encode the data
-to a stream. The PepClassDescriptor provides meta data for each of the values/fields in the Object[]. This information 
-can be used to create the encoding schema for serialized data. The **project** and **embed** functions provided by
-the PepClassDescriptor are only sample implementations. A serialization library can use the PepFieldDescriptors directly
-in the serialization process to create low-GC overhead implementation.
+The PepArrayMapper and PepMapMapper are both examples of how the library can be used. The PepArrayMapper is implemented using MethodHandles to demonstrate how the library might be used to generate highly efficient serialization code. The PepMapMapper provides a procedural example to show a more simple use of the library. 
+
 
 ## Maven dependencies
 
@@ -61,7 +59,7 @@ implementation group: 'io.litterat', name: 'litterat-pep', version: '0.5.0'
 
 ## Building
 
-Gradle 6.5 has been used for building the library.
+Gradle 6.5 has been used for building the library. The library has been designed for Java 11 but can possibly be used in earlier versions.
 
 
 ## License
@@ -80,49 +78,65 @@ a way of describing what elements of a class needs to be serialized without reso
 that effectively encode the schema of serialization in code. By extracting the elements to be serialized from a class the structure
 can be encoded and shared with readers of the data. 
 
-The concept of the embedded-projection pairs is being used simplistically as: there is a subset S(small) for any class B(big) that we want to serialize.  We want to define two functions, **project** and **embed** to go to and from S (the structure to serialize) and B (the target object).
+The concept of the [embedded-projection](https://mail.openjdk.java.net/pipermail/amber-dev/2020-August/006445.html) pairs relates to the conversion of information between two domains; one richer than the other. A useful property of ep-pairs is that once a conversion from the richer domain to the other domain occurs the values can be mapped back and forth without further loss of information. This is a good framework from which to view
+the conversion of Java's object orientated domain to the serialization or data domain. We can view Java's object orientated domain complete with methods as being "live", while the data domain without methods as being "dead". A simple definition of ep-paris, is that there is a subset S(small) for any class B(big) that we want to convert.  We want to define two functions, **project** and **embed** to go to and from S (the structure to serialize) and B (the target object).
 
 	project: B -> S
 	embed: S -> B
 
-In this case S is represented by the Object[] and B is represented by the target class. In many cases an intermediate object S will be required
-to represent the serialized state prior to creating the Object[]. The general form of the project function is:
+Looking closer at the two domains, Java's domain provides a very rich language of both data and methods defined by the language specification. However, the data domain can be classified simply as:
 
-```java
-// First project the target to get projected form. May be an identity function.
-Object small = project.invoke(big);
+    element: atom | tuple | array
+    tuple: element*
+    array: element[]
+    atom: primitive
+    
+This simple definition of the data domain fits reasonably well to a wide variety of data structures and encoding. The samples provided by the library include array and map data structures. However, this could easily apply to most serialization encodings, and text based encodings such as XML and JSON. To convert between the two domains, ep-pairs for each of tuple, array and atom must be provided by Java. If this can be achieved in a simple and consistent way then the same library can be used for many different data encoding libraries.
 
-// Get the values from the projected object.
-Object[] values = new Object[fields.length];
-for (int x=0; x<fields.length; x++) {
-	values[x] = fields[x].getValue();
-}
-return values;
-```
+### Tuples
 
-Conversely the embed function can be simplified to the following:
+The concept of an n-element tuple with specific names and types can be represented in a wide variety of programming styles in Java. However, from a conversion point of view, we're most interested in the ways conversion functions interact with java classes. The following mechanisms were identified and the difficulty of mapping to a tuple using reflection identified:
 
-```java
-// Create the object passing in required arguments
-Object small = new Small(values[0],...)
+Class that can map directly to a tuple require different styles of data extract and inject:
 
-// Call any setters.
-for (int x=0; x<fields.length; x++) {
-    if (fields[x].writeHandle() != null ) {
-	    // equivalent to small.setX(values[x]);
-		writeHandle.invoke(small, values[x]); 
-	}
-}
+ * Constructor/Destructor - An n-arg constructor with n-arg destructor. The proposal suggests using this pattern, but it is not available yet.
+ * Constructor/Accessors - Available, but potentially difficult to match parameters from constructor with accessors.
+ * Setters/Getters - Simple, but requires no-args constructor and immutability of objects is where a lot of developers are moving.
+ * Records - Similar to the immutable Constructor/Accessors with the important point that the platform provides field meta data. Java 14 only
 
-// call the embed function and return Big.
-return (Big) embed.invoke(small)
-```
+In addition, patterns for classes that can not be directly mapped to a tuple can export and import the data:
 
-In some cases it will be a simple one to one mapping between Big and Small with the project/embed functions being an identity function. 
-In other cases the difference between the serialized form and original are quite different. In all cases a projected value S should
-be equal to project(embed(S)). That is, going from serialized form to target and back should result in the same serialized form. However,
-going from target object to serialized form and back to target does not neccessarily result in the same form. The target object
-may not project all of its data.
+ * Encapsulated produces data - The class has an alternative form and provides constructor and accessor for the alternate form. The alternate form being a data object.
+ * Encapsulated produces "live" object - A data class that extracts and produces from a target class, with the target class not having defined a direct way to produce data.
+ * Intermediate ep-pair bridge - A third class that provides both projection and embedding functions between two other classes (one Data and one live).
+ * Identity - This is where the target class is also the data class. Adding this you can always call the conversion function.
+
+By breaking up the above into two groups and including the "identity" function in the second group, it is possible to create a standard ep-pair functions:
+
+   toData: extract(export(object))
+   toObject: import(inject(data))
+
+While the export and import function can easily standardised in the platform, there's still an issue with the implementation of extract and inject. Of all of the above, Java 14 Records provide the closest match to the data domain tuple. In addition, it also provides the meta data via reflection to provide a standard API. By creating a standardised extract/inject functions with corresponding reflection data we can standardise the above functions. All data classes must provide:
+
+  * n-argument constructor: A MethodHandle which creates the object with the given values.
+  * n-field components: A list of names, types and MethodHandle which returns the value of the component.
+  * export/import: Two MethodHandles which perform optional export/import of the tuple into the class.
+
+
+The library accomplishes this by creating reflection based wrappers around each of the of the data styles:
+
+ * Constructor/Accessors - Uses byte code analysis to identify constructor parameters and accessors.
+ * Setters/Getters - Uses MethodHandle folding to generate a synthetic constructor that sets all values.
+ * Records - Maps directly to Records meta data and reflection methods.
+ 
+ 
+### Atoms
+
+TBD
+
+### Arrays
+
+TBD
 
 ## Under development
 
@@ -134,6 +148,8 @@ The library is currently under heavy development so expect some rough edges. Thi
 
 ## Reference
 
+NOTE: Reference section needs reviewing.
+
 #### PepContext
 
 The PepContext provides a library of PepClassDescriptors. Each instance of a PepContext can have one mapping for a particular target
@@ -143,12 +159,6 @@ communications. The interface has a simple interface with three functions.
 ```java
 // get the class descriptor for the target class.
 public <T> PepClassDescriptor<T> getDescriptor(Class<T> targetClass) throws PepException;
-  
-// get the class descriptor for the target class using a Project Embed function pair.
-public <T> PepClassDescriptor<T> getDescriptor(Class<T> targetClass, ProjectEmbedPair<T, ?> pePair) throws PepException;
-
-// get the class descriptor for the target class using a specific Embed implementation.
-public <T> PepClassDescriptor<T> getDescriptor(Class<T> targetClass, Embeds<T> embeds) throws PepException;
 ```
 
 A PepException will be thrown if a descriptor could not be generated, or if a call to getDescriptor uses a different Embeds/ProjectEmbedPair
