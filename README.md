@@ -10,6 +10,7 @@ Litterat:pep (projection-embedded pairs)
 [![Follow Litterat](https://img.shields.io/twitter/follow/litterat_io.svg?style=social)](https://twitter.com/litterat_io)
 [![Follow Oobles](https://img.shields.io/twitter/follow/oobles.svg?style=social)](https://twitter.com/oobles)
 
+__NOTE__ - Library under development. Not yet usable.
 
 This library is an implementation of some of the ideas written in [Towards Better Serialization](https://github.com/openjdk/amber-docs/blob/master/site/design-notes/towards-better-serialization.md) to create a class descriptor for use in serialization libraries and possibly other purposes. 
 It is not a serialization library in itself, but a way of describing how a class should be
@@ -82,17 +83,17 @@ The concept of the [embedded-projection](https://mail.openjdk.java.net/pipermail
 the conversion of Java's object orientated domain to the serialization or data domain. We can view Java's object orientated domain complete with methods as being "live", while the data domain without methods as being "dead". A simple definition of ep-paris, is that there is a subset S(small) for any class B(big) that we want to convert.  We want to define two functions, **project** and **embed** to go to and from S (the structure to serialize) and B (the target object).
 
 ```
-	project: B -> S
-	embed: S -> B
+project: B -> S
+embed: S -> B
 ```
 
 Looking closer at the two domains, Java's domain provides a very rich language of both data and methods defined by the language specification. However, the data domain can be classified simply as:
 
 ```
-    element: atom | tuple | array
-    tuple: element*
-    array: element[]
-    atom: primitive
+element: atom | tuple | array
+tuple: element*
+array: element[]
+atom: primitive
 ```
     
 This simple definition of the data domain fits reasonably well to a wide variety of data structures and encoding. The samples provided by the library include array and map data structures. However, this could easily apply to most serialization encodings, and text based encodings such as XML and JSON. To convert between the two domains, ep-pairs for each of tuple, array and atom must be provided by Java. If this can be achieved in a simple and consistent way then the same library can be used for many different data encoding libraries.
@@ -118,8 +119,8 @@ In addition, patterns for classes that can not be directly mapped to a tuple can
 By breaking up the above into two groups and including the "identity" function in the second group, it is possible to create a standard ep-pair functions:
 
 ```
-   toData: extract(export(object))
-   toObject: import(inject(data))
+toData: extract(export(object))
+toObject: import(inject(data))
 ```
 
 While the export and import function can easily standardised in the platform, there's still an issue with the implementation of extract and inject. Of all of the above, Java 14 Records provide the closest match to the data domain tuple. In addition, it also provides the meta data via reflection to provide a standard API. By creating a standardised extract/inject functions with corresponding reflection data we can standardise the above functions. All data classes must provide:
@@ -128,10 +129,9 @@ While the export and import function can easily standardised in the platform, th
   * n-field components - A list of names, types and MethodHandle which returns the value of the component.
   * export/import - Two MethodHandles which perform optional export/import of the tuple into the class.
 
-
 The library accomplishes this by creating reflection based wrappers around each of the of the data styles:
 
- * Constructor/Accessors - Uses byte code analysis to identify constructor parameters and accessors.
+ * Constructor/Accessors - Uses byte code analysis to identify constructor parameters and accessor.
  * Setters/Getters - Uses MethodHandle folding to generate a synthetic constructor that sets all values.
  * Records - Maps directly to Records meta data and reflection methods.
 
@@ -149,6 +149,10 @@ TBD
 
 The library is currently under heavy development so expect some rough edges. Things still to do include:
 
+ * Tuples - Write complete handling for POJO and use PepData annotation.
+ * Atoms - Implement atom handling
+ * Arrays - Write plan and implement functions for arrays.
+ * Reference - Re-write reference documentation.
  * Versioning - A single target class may have multiple versions and may require multiple project/embed functions.
  * Collections - Collections (List,Map,Set,etc) will likely require some special handling to make them perform well.
  * Interfaces - From a serialization point of view interfaces are similar to a union and will likely require some special handling.
