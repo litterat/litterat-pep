@@ -35,7 +35,7 @@ public class PepDataComponent {
 	// accessor read handle. signature: type t = object.getT();
 	private final MethodHandle accessor;
 
-	public PepDataComponent(String name, Class<?> type, PepDataClass dataClass, MethodHandle readHandle, MethodHandle writeHandle, int ctorArg) {
+	public PepDataComponent(String name, Class<?> type, PepDataClass dataClass, MethodHandle readHandle) {
 		this.name = name;
 		this.type = type;
 		this.dataClass = dataClass;

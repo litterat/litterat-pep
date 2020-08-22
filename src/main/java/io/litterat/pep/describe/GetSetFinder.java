@@ -15,14 +15,14 @@
  */
 package io.litterat.pep.describe;
 
-import io.litterat.pep.PepDataComponent;
+import java.lang.reflect.Constructor;
+import java.util.List;
 
-public class ClassicDescriber implements ClassDescriber {
+public class GetSetFinder implements ComponentFinder {
 
 	@Override
-	public PepDataComponent[] describe(Class<?> clss) {
-
-		return null;
+	public void findComponents(Class<?> clss, Constructor<?> constructor, List<ComponentInfo> fields) {
+		// TODO implement this.
 	}
 
 }

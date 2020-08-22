@@ -29,6 +29,7 @@ public class ProjectImmutable implements ToData<ProjectImmutableData> {
 		private final int x;
 		private final int y;
 
+		@PepData
 		public ProjectImmutableData(int x, int y) {
 			this.x = x;
 			this.y = y;

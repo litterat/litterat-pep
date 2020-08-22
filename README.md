@@ -129,21 +129,56 @@ While the export and import function can easily standardised in the platform, th
   * n-field components - A list of names, types and MethodHandle which returns the value of the component.
   * export/import - Two MethodHandles which perform optional export/import of the tuple into the class.
 
-The library accomplishes this by creating reflection based wrappers around each of the of the data styles:
+The library accomplishes this by creating reflection based wrappers around each of the of the data styles and create the PepDataClass and PepDataComponents. These provide a standard interface to create and access tuples classes.
 
- * Constructor/Accessors - Uses byte code analysis to identify constructor parameters and accessor.
- * Setters/Getters - Uses MethodHandle folding to generate a synthetic constructor that sets all values.
- * Records - Maps directly to Records meta data and reflection methods.
+ * constructor: A MethodHandle with N-arg constructor representing all fields in data object.
+ * components: Fields with name and type for each element in data. A MethodHandle that returns the value of the field.
+ * toObject: A MethodHandle for import function with signature (dataClass):typeClass
+ * toData: A MethodHandle for export function with signature (typeClass):dataClass
 
-This meta data is exposed via the PepDataClass and PepDataComponent classes.
  
 ### Atoms
 
-TBD
+An atom represents a single value represented in data. In a similar way to tuples we require a set of pe-pairs to convert from the richer expression of Java to a known set of primitives in the data domain. We've identified the following ways of representing atoms in Java
+
+ * primitive : A primitive such as int, float, boolean, etc.
+ * Object primitive : These include Integer, Float, Boolean, etc.
+ * String: The Java String class.
+ * Enum: Enumerated types.
+ * Wrapped primitive: Any object with a single primitive constructor and accessor. e.g. UUID <---> String.
+ 
+In a similar way to tuples, by using an identity function for primitive types, a single set of pe-pairs can be used for all conversions to/from the data domain.
+
+```
+toPrimitive: extract(object)
+toObject/primitive: inject(primitive)
+```
+
+The PepDataClass provides the conversion of these with:
+
+ * constructor: not defined
+ * components: empty set.
+ * toObject: A MethodHandle for inject function with signature (primitive):typeClass
+ * toData: A MethodHandle for export function with signature (typeClass):primitive
+
 
 ### Arrays
 
-TBD
+To create pe-pairs generically for Java there are two different mechanisms to use. The Object[] is the simpler and can potentially have higher duplication of effort and garbage collection pressure. The alternative is to use the Collection interface which includes size(), add() and iterator().
+Using the former, it is easier to create the pe-pair functions, however, a future implementation might use the later. In this implementation we use the following pe-pairs:
+
+```
+toArray: export(object)
+toObject: import(array)
+```
+
+The PepDataClass provides the conversion of these with:
+
+ * constructor: A MethodHandle to create the target array.
+ * components: empty set.
+ * toObject: A MethodHandle to convert to tart collection with signature (object[]):object
+ * toData: A MethodHandle to convert to Object[]  with signature (object):Object[]
+
 
 ## Under development
 

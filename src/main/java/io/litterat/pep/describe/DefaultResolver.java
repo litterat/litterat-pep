@@ -15,14 +15,27 @@
  */
 package io.litterat.pep.describe;
 
+import java.io.Serializable;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
+import io.litterat.pep.PepAtom;
 import io.litterat.pep.PepContext;
 import io.litterat.pep.PepContextResolver;
+import io.litterat.pep.PepData;
 import io.litterat.pep.PepDataClass;
 import io.litterat.pep.PepDataComponent;
 import io.litterat.pep.PepException;
@@ -30,69 +43,406 @@ import io.litterat.pep.ToData;
 
 public class DefaultResolver implements PepContextResolver {
 
+	private static final String TODATA_METHOD = "toData";
+	private static final String TOOBJECT_METHOD = "toObject";
+
+	private final boolean allowSerializable;
+
+	private final boolean allowAny;
+
+	public DefaultResolver(boolean allowSerializable, boolean allowAny) {
+		this.allowSerializable = allowSerializable;
+		this.allowAny = allowAny;
+	}
+
 	@Override
 	public PepDataClass resolve(PepContext context, Class<?> targetClass) throws PepException {
 		PepDataClass descriptor = null;
 
-		// Unable to describe interfaces, arrays, etc.
-		if (targetClass.isInterface() || targetClass.isArray() || targetClass.isAnonymousClass() || targetClass.isEnum() || targetClass.isAnnotation()
-				|| targetClass.isPrimitive() || targetClass.isSynthetic()) {
-			throw new IllegalArgumentException(String.format("Not able to describe class for serialization: %s", targetClass));
+		if (isArray(targetClass)) {
+			descriptor = resolveArray(context, targetClass);
+		} else if (isAtom(targetClass)) {
+			descriptor = resolveAtom(context, targetClass);
+		} else if (isTuple(targetClass)) {
+			descriptor = resolveTuple(context, targetClass);
+		} else {
+			throw new PepException(String.format("Unable to find a valid data conversion for class: %s", targetClass));
+		}
+		return descriptor;
+	}
+
+	private boolean isTuple(Class<?> targetClass) {
+
+		// if class has annotation this is a tuple.
+		PepData pepData = targetClass.getAnnotation(PepData.class);
+		if (pepData != null) {
+			return true;
 		}
 
+		// Check for annotation on constructor.
+		Constructor<?>[] constructors = targetClass.getConstructors();
+		for (Constructor<?> constructor : constructors) {
+			pepData = constructor.getAnnotation(PepData.class);
+			if (pepData != null) {
+				return true;
+			}
+		}
+
+		// This is to look at static methods
+		Method[] methods = targetClass.getDeclaredMethods();
+		for (Method method : methods) {
+
+			pepData = method.getAnnotation(PepData.class);
+			if (Modifier.isStatic(method.getModifiers()) && pepData != null) {
+				return true;
+			}
+		}
+
+		// Class has implemented ToData so exports/imports a data class.
 		if (ToData.class.isAssignableFrom(targetClass)) {
-			for (Type genericInterface : targetClass.getGenericInterfaces()) {
-				if (genericInterface instanceof ParameterizedType) {
-					Type[] genericTypes = ((ParameterizedType) genericInterface).getActualTypeArguments();
-					for (Type genericType : genericTypes) {
+			return true;
+		}
 
-						Class<?> serialClass = (Class<?>) genericType;
+		// We can try and see if we can serialize the class. Results will vary.
+		if (allowSerializable) {
+			if (Serializable.class.isAssignableFrom(targetClass)) {
+				return true;
+			}
+		}
 
-						try {
-							MethodHandle embed = MethodHandles.lookup().unreflectConstructor(targetClass.getConstructor(serialClass));
+		// Sure, we can try to serialize anything. but ¯\_("/)_/¯
+		if (allowAny) {
+			return true;
+		}
 
-							MethodHandle project = MethodHandles.lookup().unreflect(targetClass.getMethod("toData"));
+		return false;
+	}
 
-							PepDataClass serialDescriptor = resolve(context, serialClass);
+	private boolean isArray(Class<?> targetClass) {
 
-							MethodHandle constructor = null;
-							try {
-								constructor = MethodHandles.lookup().unreflectConstructor(serialClass.getConstructor(int.class, int.class));
-							} catch (IllegalAccessException | NoSuchMethodException | SecurityException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
+		if (targetClass.isArray() || Collection.class.isAssignableFrom(targetClass)) {
+			return true;
+		}
 
-							descriptor = new PepDataClass(targetClass, serialClass, constructor, project, embed, serialDescriptor.dataComponents());
-						} catch (NoSuchMethodException | SecurityException | IllegalAccessException e) {
+		return false;
+	}
 
-							e.printStackTrace();
-						}
-					}
-				}
+	private boolean isAtom(Class<?> targetClass) {
+
+		if (targetClass.isPrimitive()) {
+			return true;
+		}
+
+		// Check for annotation on constructor.
+		Constructor<?>[] constructors = targetClass.getConstructors();
+		for (Constructor<?> constructor : constructors) {
+			PepAtom pepAtom = constructor.getAnnotation(PepAtom.class);
+			if (pepAtom != null) {
+				return true;
+			}
+		}
+
+		// Allow enums to be serialized.
+		if (allowSerializable || allowAny) {
+			if (targetClass.isEnum()) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private PepDataClass resolveArray(PepContext context, Class<?> targetClass) throws PepException {
+		PepDataClass descriptor = null;
+
+		try {
+			if (targetClass.isArray()) {
+
+				MethodHandle constructor = MethodHandles.arrayConstructor(targetClass);
+				MethodHandle identity = MethodHandles.identity(targetClass);
+
+				descriptor = new PepDataClass(targetClass, targetClass, constructor, identity, identity, new PepDataComponent[0]);
+
+			} else if (Collection.class.isAssignableFrom(targetClass)) {
+
+				// TODO Some Collections will not have a size constructor. Fallback and drop the argument.
+				MethodHandle constructor = MethodHandles.lookup().unreflectConstructor(targetClass.getConstructor(int.class));
+				CollectionBridge bridge = new CollectionBridge(constructor);
+
+				MethodHandle toObject = MethodHandles.lookup()
+						.findVirtual(CollectionBridge.class, TOOBJECT_METHOD, MethodType.methodType(Collection.class, Object[].class)).bindTo(bridge);
+				MethodHandle toData = MethodHandles.lookup()
+						.findVirtual(CollectionBridge.class, TODATA_METHOD, MethodType.methodType(Object[].class, Collection.class)).bindTo(bridge);
+
+				descriptor = new PepDataClass(targetClass, Object[].class, constructor, toData, toObject, new PepDataComponent[0]);
+
 			}
 
-		} else {
-
-			ByteCodeDescriber describer = new ByteCodeDescriber(context);
-
-			MethodHandle constructor = null;
-			try {
-				constructor = MethodHandles.lookup().unreflectConstructor(targetClass.getConstructor(int.class, int.class));
-			} catch (IllegalAccessException | NoSuchMethodException | SecurityException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			PepDataComponent[] fields = describer.describe(targetClass);
-
-			MethodHandle toObject = MethodHandles.identity(targetClass);
-			MethodHandle toData = MethodHandles.identity(Object.class).asType(MethodType.methodType(targetClass, targetClass));
-
-			descriptor = new PepDataClass(targetClass, targetClass, constructor, toData, toObject, fields);
-
+		} catch (IllegalAccessException | NoSuchMethodException | SecurityException e) {
+			throw new PepException("Failed to get array descriptor", e);
 		}
 
 		return descriptor;
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private static final Set<Class> WRAPPER_TYPES = new HashSet(
+			Arrays.asList(Boolean.class, Character.class, Byte.class, Short.class, Integer.class, Long.class, Float.class, Double.class, Void.class));
+
+	private boolean isPrimitive(Class<?> targetClass) {
+		if (targetClass.isPrimitive() || WRAPPER_TYPES.contains(targetClass)) {
+			return true;
+		}
+		return false;
+	}
+
+	private PepDataClass resolveAtom(PepContext context, Class<?> targetClass) throws PepException {
+		PepDataClass descriptor = null;
+
+		try {
+			if (targetClass.isPrimitive()) {
+				// primitives should already be registered, but just incase.
+				MethodHandle identity = MethodHandles.identity(targetClass);
+				descriptor = new PepDataClass(targetClass, targetClass, identity, identity, identity, new PepDataComponent[0]);
+			}
+
+			// Check for annotation on constructor.
+			Constructor<?>[] constructors = targetClass.getConstructors();
+			for (Constructor<?> constructor : constructors) {
+				PepAtom pepAtom = constructor.getAnnotation(PepAtom.class);
+				if (pepAtom != null) {
+					Parameter[] params = constructor.getParameters();
+					if (params.length != 1 || !isPrimitive(params[0].getType())) {
+						throw new PepException(String.format("Atom must have single primitive argument", targetClass));
+					}
+
+					Class<?> dataClass = params[0].getType();
+					MethodHandle identity = MethodHandles.identity(dataClass);
+
+					MethodHandle toObject = MethodHandles.lookup().unreflectConstructor(constructor);
+
+					// TODO Should do additional checks. Is return type same as constructor type.
+					// Also should check for ToData interface implementation or @PepAtom on specific method as could be different
+					// ways to say which method is toData.
+					Method toDataMethod = targetClass.getDeclaredMethod(TODATA_METHOD);
+
+					MethodHandle toData = MethodHandles.lookup().unreflect(toDataMethod);
+
+					descriptor = new PepDataClass(targetClass, dataClass, identity, toData, toObject, new PepDataComponent[0]);
+					break;
+				}
+			}
+
+			// Allow enums to be serialized to their String value if using default serialization.
+			if (allowSerializable || allowAny) {
+				if (targetClass.isEnum()) {
+
+					EnumBridge bridge = new EnumBridge(targetClass);
+
+					MethodHandle identity = MethodHandles.identity(targetClass);
+
+					MethodHandle toObject = MethodHandles.lookup()
+							.findVirtual(CollectionBridge.class, TOOBJECT_METHOD, MethodType.methodType(Enum.class, String.class)).bindTo(bridge);
+					MethodHandle toData = MethodHandles.lookup()
+							.findVirtual(CollectionBridge.class, TODATA_METHOD, MethodType.methodType(Object[].class, Collection.class))
+							.bindTo(bridge);
+
+					descriptor = new PepDataClass(targetClass, String.class, identity, toData, toObject, new PepDataComponent[0]);
+				}
+			}
+		} catch (SecurityException | IllegalAccessException | NoSuchMethodException | PepException e) {
+			throw new PepException("Failed to get atom descriptor", e);
+		}
+
+		return descriptor;
+	}
+
+	private PepDataClass resolveTuple(PepContext context, Class<?> targetClass) throws PepException {
+		PepDataClass descriptor = null;
+
+		try {
+			// If the class if exporting/importing a dataclass.
+			if (ToData.class.isAssignableFrom(targetClass)) {
+
+				for (Type genericInterface : targetClass.getGenericInterfaces()) {
+
+					if (genericInterface instanceof ParameterizedType && ((ParameterizedType) genericInterface).getRawType() == ToData.class) {
+
+						// ToData has one parameter so this should be safe.
+						Class<?> dataType = (Class<?>) ((ParameterizedType) genericInterface).getActualTypeArguments()[0];
+
+						// Recursively get hold of the data class descriptor. 
+						PepDataClass tupleData = context.getDescriptor(dataType);
+
+						// We require that a constructor be present that takes the data class as input.
+						MethodHandle toObject = MethodHandles.lookup().unreflectConstructor(targetClass.getConstructor(dataType));
+
+						// The class implements ToData so get the method.
+						MethodHandle toData = MethodHandles.lookup().unreflect(targetClass.getMethod(TODATA_METHOD));
+
+						// The constructor and data components are copied from the data class.
+						descriptor = new PepDataClass(targetClass, dataType, tupleData.constructor(), toData, toObject, tupleData.dataComponents());
+						break;
+					}
+
+					// Should be unreachable code.
+					throw new PepException("Failed to get data descriptor. Failed to find constructor");
+				}
+
+			} else {
+
+				// This is a data class so need to decide what is/isn't data.
+				List<ComponentInfo> components = new ArrayList<>();
+
+				// TODO Perform better analysis to find correct constructor.
+				Constructor<?> ctor = targetClass.getConstructor(int.class, int.class);
+
+				// Use the Immutable finder to discover any immutable fields for the class.
+				ImmutableFinder describer = new ImmutableFinder(context);
+				describer.findComponents(targetClass, ctor, components);
+
+				// Use the getter/setter finder to discover any fields with matching getters and setters.
+				GetSetFinder getSetFinder = new GetSetFinder();
+				getSetFinder.findComponents(targetClass, ctor, components);
+
+				// prepare the fake constructor.
+				// TODO Deal with potential static constructors.
+				MethodHandle constructor = MethodHandles.lookup().unreflectConstructor(ctor);
+				//MethodHandle constructor = createTupleConstructor(targetClass, components, dataCtor);
+
+				// This is a data class so toObject/toData is identity functions.
+				MethodHandle toObject = MethodHandles.identity(targetClass);
+				MethodHandle toData = MethodHandles.identity(targetClass);
+
+				// Prepare the field descriptors.
+				PepDataComponent[] dataComponents = new PepDataComponent[components.size()];
+				for (int x = 0; x < components.size(); x++) {
+					ComponentInfo info = components.get(x);
+
+					MethodHandle accessor = MethodHandles.lookup().unreflect(info.getReadMethod());
+
+					PepDataClass dataClass = context.getDescriptor(info.getType());
+
+					PepDataComponent component = new PepDataComponent(info.getName(), info.getType(), dataClass, accessor);
+
+					dataComponents[x] = component;
+				}
+
+				descriptor = new PepDataClass(targetClass, targetClass, constructor, toData, toObject, dataComponents);
+			}
+		} catch (IllegalAccessException | NoSuchMethodException | SecurityException | PepException e) {
+			throw new PepException("Failed to get data descriptor", e);
+		}
+
+		return descriptor;
+	}
+
+	/**
+	 * Creates a single MethodHandle that both constructs an object and sets any setters using a single
+	 * Object[] as input. Fields are passed in through the real constructor or through the setters if present.
+	 * 
+	 * @param fields
+	 * @param dataConstructor
+	 * @return
+	 * @throws IllegalAccessException 
+	 */
+	private MethodHandle createTupleConstructor(Class<?> dataClass, List<ComponentInfo> fields, MethodHandle dataConstructor)
+			throws IllegalAccessException {
+		// (Object[]):serialClass -> ctor(Object[])
+		MethodHandle create = createEmbedConstructor(dataClass, dataConstructor, fields);
+
+		// (serialClass, Object[]) -> serialClass.setValues(Object[x]);
+		MethodHandle setters = createEmbedSetters(dataClass, fields);
+
+		// (Object[], Object[]) -> ctor(Object[]).setvalues(Object[])
+		MethodHandle createAndSet = MethodHandles.collectArguments(setters, 0, create);
+
+		return createAndSet;
+	}
+
+	/**
+	 * Builds a constructor that takes Object[] as constructor arguments and return an object instance. Passes
+	 * relevant fields into the data class constructor.
+	 *
+	 * @param objectConstructor
+	 * @param fields
+	 * @return
+	 */
+	private MethodHandle createEmbedConstructor(Class<?> dataClass, MethodHandle objectConstructor, List<ComponentInfo> fields) {
+		MethodHandle result = objectConstructor;
+
+		for (int x = 0; x < fields.size(); x++) {
+			ComponentInfo field = fields.get(x);
+
+			if (field.getWriteMethod() == null) {
+
+				int arg = field.getConstructorArgument();
+				int inputIndex = x;
+
+				// (values[],int) -> values[int]
+				MethodHandle arrayGetter = MethodHandles.arrayElementGetter(Object[].class);
+
+				// () -> inputIndex
+				MethodHandle index = MethodHandles.constant(int.class, inputIndex);
+
+				// (values[]) -> values[inputIndex]
+				MethodHandle arrayIndexGetter = MethodHandles.collectArguments(arrayGetter, 1, index)
+						.asType(MethodType.methodType(field.getType(), Object[].class));
+
+				// ()-> constructor( ..., values[inputIndex] , ... )
+				result = MethodHandles.collectArguments(result, arg, arrayIndexGetter);
+			}
+		}
+
+		// spread the arguments so ctor(Object[],Object[]...) becomes ctor(Object[])
+		int paramCount = objectConstructor.type().parameterCount();
+		if (paramCount > 0) {
+			int[] permuteInput = new int[paramCount];
+			result = MethodHandles.permuteArguments(result, MethodType.methodType(dataClass, Object[].class), permuteInput);
+		}
+		return result;
+	}
+
+	/**
+	 * Creates a MethodHandle that takes an Object[] as input and calls any field setters.
+	 * 
+	 * @param fields
+	 * @return
+	 * @throws IllegalAccessException 
+	 */
+	private MethodHandle createEmbedSetters(Class<?> dataClass, List<ComponentInfo> fields) throws IllegalAccessException {
+
+		// (object):object -> return object;
+		MethodHandle result = MethodHandles.identity(dataClass);
+
+		for (int x = 0; x < fields.size(); x++) {
+
+			ComponentInfo field = fields.get(x);
+			int inputIndex = x;
+
+			if (field.getWriteMethod() != null) {
+
+				// (obj, value):void -> obj.setField( value );
+				MethodHandle fieldSetter = MethodHandles.lookup().unreflect(field.getWriteMethod());
+
+				// (value[],x):Object -> value[x]
+				MethodHandle arrayGetter = MethodHandles.arrayElementGetter(Object[].class);
+
+				// ():int -> inputIndex
+				MethodHandle index = MethodHandles.constant(int.class, inputIndex);
+
+				// (value[]):Object -> value[inputIndex]
+				MethodHandle arrayIndexGetter = MethodHandles.collectArguments(arrayGetter, 1, index);
+
+				// (obj, value[]):void -> obj.setField( value[inputIndex] );
+				MethodHandle arrayFieldSetter = MethodHandles.collectArguments(fieldSetter, 1, arrayIndexGetter);
+
+				// add to list of setters.
+				result = MethodHandles.foldArguments(result, arrayFieldSetter);
+			}
+		}
+
+		return result;
+
+	}
 }

@@ -15,14 +15,17 @@
  */
 package io.litterat.pep.describe;
 
-import io.litterat.pep.PepDataComponent;
+import java.lang.reflect.Constructor;
+import java.util.List;
 
-public class GetSetDescriber implements ClassDescriber {
+import io.litterat.pep.PepException;
 
-	@Override
-	public PepDataComponent[] describe(Class<?> clss) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+/**
+ * 
+ * A component finder looks for tuple components in a class definition.
+ *
+ */
+public interface ComponentFinder {
 
+	void findComponents(Class<?> clss, Constructor<?> constructor, List<ComponentInfo> fields) throws PepException;
 }

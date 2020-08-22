@@ -15,7 +15,6 @@
  */
 package io.litterat.pep;
 
-import java.io.IOException;
 import java.util.Map;
 
 import org.junit.jupiter.api.Assertions;
@@ -105,7 +104,7 @@ public class ImmutableDescriptorTest {
 		// corrupting the map by putting an invalid value for x.
 		map.put("x", "error");
 
-		Assertions.assertThrows(IOException.class, () -> {
+		Assertions.assertThrows(PepException.class, () -> {
 			mapMapper.toObject(SimpleImmutable.class, map);
 		});
 

@@ -34,12 +34,26 @@ public class PepContext {
 
 		PepContextResolver resolver;
 
+		boolean allowAny = false;
+
+		boolean allowSerializable = false;
+
 		public Builder() {
 			this.resolver = null;
 		}
 
-		Builder resolver(PepContextResolver resolver) {
+		public Builder resolver(PepContextResolver resolver) {
 			this.resolver = resolver;
+			return this;
+		}
+
+		public Builder allowAny() {
+			allowAny = true;
+			return this;
+		}
+
+		public Builder allowSerializable() {
+			allowSerializable = true;
 			return this;
 		}
 
@@ -54,7 +68,7 @@ public class PepContext {
 
 	private PepContext(Builder builder) {
 
-		this.defaultResolver = new DefaultResolver();
+		this.defaultResolver = new DefaultResolver(builder.allowSerializable, builder.allowAny);
 
 		if (builder.resolver == null) {
 			this.resolver = defaultResolver;
@@ -103,7 +117,7 @@ public class PepContext {
 			if (descriptor == null) {
 				throw new PepException(String.format("Unable to find suitable data descriptor for class: %s", targetClass.getName()));
 			}
-			descriptors.put(targetClass, descriptor);
+			register(targetClass, descriptor);
 		}
 
 		return descriptor;
