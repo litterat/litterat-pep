@@ -152,7 +152,6 @@ public class PepArrayMapper {
 		for (int x = 0; x < dataClass.dataComponents().length; x++) {
 			PepDataComponent field = fields[x];
 
-			int arg = x;
 			int inputIndex = x;
 
 			// (values[],int) -> values[int]
@@ -168,6 +167,7 @@ public class PepArrayMapper {
 			// TODO Needs to be check for nulls before calling toObject or array to Object.
 
 			// Pass the object through toObject if it isn't an atom.
+			// (values[]) -> toObject(values[x])
 			PepDataClass fieldDataClass = field.dataClass();
 			if (fieldDataClass.isAtom()) {
 
@@ -182,17 +182,32 @@ public class PepArrayMapper {
 				}
 			}
 
+			// (values[],int,Object):void -> values[int] = Object;
+			MethodHandle arraySetter = MethodHandles.arrayElementSetter(Object[].class);
+
+			//(values[],Object):void -> values[x] = Object;
+			MethodHandle arrayIndexSetter = MethodHandles.collectArguments(arraySetter, 1, index);
+
+			// (values[],Object[]):void -> values[x] = toObject(values[x]);
+			MethodHandle arrayValueSetter = MethodHandles.collectArguments(arrayIndexSetter, 1,
+					arrayIndexGetter.asType(MethodType.methodType(Object.class, Object[].class)));
+
+			int[] permuteInput = new int[2];
+			MethodHandle combined = MethodHandles.permuteArguments(arrayValueSetter, MethodType.methodType(void.class, Object[].class), permuteInput);
+
 			// ()-> constructor( ..., values[inputIndex] , ... )
-			result = MethodHandles.collectArguments(result, arg, arrayIndexGetter);
+			//result = MethodHandles.collectArguments(result, arg, arrayIndexGetter);
+
+			result = MethodHandles.foldArguments(result, combined);
 
 		}
 
 		// spread the arguments so ctor(Object[],Object[]...) becomes ctor(Object[])
-		int paramCount = dataClass.constructor().type().parameterCount();
-		if (paramCount > 0) {
-			int[] permuteInput = new int[paramCount];
-			result = MethodHandles.permuteArguments(result, MethodType.methodType(dataClass.dataClass(), Object[].class), permuteInput);
-		}
+		//		int paramCount = dataClass.constructor().type().parameterCount();
+		//		if (paramCount > 0) {
+		//			
+		//			result = MethodHandles.permuteArguments(result, MethodType.methodType(dataClass.dataClass(), Object[].class), permuteInput);
+		//		}
 		return result;
 	}
 

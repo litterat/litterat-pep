@@ -32,10 +32,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import io.litterat.pep.PepAtom;
+import io.litterat.pep.Atom;
+import io.litterat.pep.Data;
 import io.litterat.pep.PepContext;
 import io.litterat.pep.PepContextResolver;
-import io.litterat.pep.PepData;
 import io.litterat.pep.PepDataClass;
 import io.litterat.pep.PepDataComponent;
 import io.litterat.pep.PepException;
@@ -74,7 +74,7 @@ public class DefaultResolver implements PepContextResolver {
 	private boolean isTuple(Class<?> targetClass) {
 
 		// if class has annotation this is a tuple.
-		PepData pepData = targetClass.getAnnotation(PepData.class);
+		Data pepData = targetClass.getAnnotation(Data.class);
 		if (pepData != null) {
 			return true;
 		}
@@ -82,7 +82,7 @@ public class DefaultResolver implements PepContextResolver {
 		// Check for annotation on constructor.
 		Constructor<?>[] constructors = targetClass.getConstructors();
 		for (Constructor<?> constructor : constructors) {
-			pepData = constructor.getAnnotation(PepData.class);
+			pepData = constructor.getAnnotation(Data.class);
 			if (pepData != null) {
 				return true;
 			}
@@ -92,7 +92,7 @@ public class DefaultResolver implements PepContextResolver {
 		Method[] methods = targetClass.getDeclaredMethods();
 		for (Method method : methods) {
 
-			pepData = method.getAnnotation(PepData.class);
+			pepData = method.getAnnotation(Data.class);
 			if (Modifier.isStatic(method.getModifiers()) && pepData != null) {
 				return true;
 			}
@@ -136,7 +136,7 @@ public class DefaultResolver implements PepContextResolver {
 		// Check for annotation on constructor.
 		Constructor<?>[] constructors = targetClass.getConstructors();
 		for (Constructor<?> constructor : constructors) {
-			PepAtom pepAtom = constructor.getAnnotation(PepAtom.class);
+			Atom pepAtom = constructor.getAnnotation(Atom.class);
 			if (pepAtom != null) {
 				return true;
 			}
@@ -209,7 +209,7 @@ public class DefaultResolver implements PepContextResolver {
 			// Check for annotation on constructor.
 			Constructor<?>[] constructors = targetClass.getConstructors();
 			for (Constructor<?> constructor : constructors) {
-				PepAtom pepAtom = constructor.getAnnotation(PepAtom.class);
+				Atom pepAtom = constructor.getAnnotation(Atom.class);
 				if (pepAtom != null) {
 					Parameter[] params = constructor.getParameters();
 					if (params.length != 1 || !isPrimitive(params[0].getType())) {
@@ -294,8 +294,8 @@ public class DefaultResolver implements PepContextResolver {
 				// This is a data class so need to decide what is/isn't data.
 				List<ComponentInfo> components = new ArrayList<>();
 
-				// TODO Perform better analysis to find correct constructor.
-				Constructor<?> ctor = targetClass.getConstructor(int.class, int.class);
+				// get the constructor.
+				Constructor<?> ctor = getConstructor(targetClass);
 
 				// Use the Immutable finder to discover any immutable fields for the class.
 				ImmutableFinder describer = new ImmutableFinder(context);
@@ -305,10 +305,11 @@ public class DefaultResolver implements PepContextResolver {
 				GetSetFinder getSetFinder = new GetSetFinder();
 				getSetFinder.findComponents(targetClass, ctor, components);
 
-				// prepare the fake constructor.
-				// TODO Deal with potential static constructors.
-				MethodHandle constructor = MethodHandles.lookup().unreflectConstructor(ctor);
-				//MethodHandle constructor = createTupleConstructor(targetClass, components, dataCtor);
+				// get the correct data constructor method handle. Either a constructor or a static method tagged with @Data.
+				MethodHandle dataConstructor = getDataConstructor(targetClass);
+
+				// Build a MethodHandle that creates object and also calls setters with order of fields as defined in components.
+				MethodHandle constructor = createTupleConstructor(targetClass, components, dataConstructor);
 
 				// This is a data class so toObject/toData is identity functions.
 				MethodHandle toObject = MethodHandles.identity(targetClass);
@@ -338,6 +339,81 @@ public class DefaultResolver implements PepContextResolver {
 	}
 
 	/**
+	 * Returns the Constructor for the dataClass. This may be different to what is used in creating the 
+	 * dataClass as a static constructor might be used instead. getDataConstructor is used to retrieve
+	 * the MethodHandle for the correct data constructor.
+	 * 
+	 * @param dataClass
+	 * @return
+	 * @throws PepException
+	 * @throws NoSuchMethodException
+	 * @throws SecurityException
+	 */
+	private Constructor<?> getConstructor(Class<?> dataClass) throws PepException, NoSuchMethodException, SecurityException {
+		Constructor<?>[] constructors = dataClass.getConstructors();
+
+		// only one custructor. this must be it.
+		if (constructors.length == 1) {
+			return constructors[0];
+		}
+
+		// Does it have an annotation?
+		for (Constructor<?> constructor : constructors) {
+			Data dataAnnotation = constructor.getAnnotation(Data.class);
+			if (dataAnnotation != null) {
+				return constructor;
+			}
+		}
+
+		// look for a static constructor.
+		Method[] methods = dataClass.getMethods();
+		for (Method method : methods) {
+			if (Modifier.isStatic(method.getModifiers())) {
+				Data dataAnnotation = method.getAnnotation(Data.class);
+				if (dataAnnotation != null) {
+					// There must be a matching constructor that matches the parameters of the static constructor.
+					return dataClass.getConstructor(method.getParameterTypes());
+				}
+			}
+		}
+
+		throw new PepException("Could not find constructor");
+
+	}
+
+	private MethodHandle getDataConstructor(Class<?> dataClass)
+			throws PepException, NoSuchMethodException, SecurityException, IllegalAccessException {
+		Constructor<?>[] constructors = dataClass.getConstructors();
+
+		// only one custructor. this must be it.
+		if (constructors.length == 1) {
+			return MethodHandles.lookup().unreflectConstructor(constructors[0]);
+		}
+
+		// Does it have an annotation?
+		for (Constructor<?> constructor : constructors) {
+			Data dataAnnotation = constructor.getAnnotation(Data.class);
+			if (dataAnnotation != null) {
+				return MethodHandles.lookup().unreflectConstructor(constructor);
+			}
+		}
+
+		// look for a static constructor.
+		Method[] methods = dataClass.getMethods();
+		for (Method method : methods) {
+			if (Modifier.isStatic(method.getModifiers())) {
+				Data dataAnnotation = method.getAnnotation(Data.class);
+				if (dataAnnotation != null) {
+					return MethodHandles.lookup().unreflect(method);
+				}
+			}
+		}
+
+		throw new PepException("Could not find constructor");
+
+	}
+
+	/**
 	 * Creates a single MethodHandle that both constructs an object and sets any setters using a single
 	 * Object[] as input. Fields are passed in through the real constructor or through the setters if present.
 	 * 
@@ -348,16 +424,28 @@ public class DefaultResolver implements PepContextResolver {
 	 */
 	private MethodHandle createTupleConstructor(Class<?> dataClass, List<ComponentInfo> fields, MethodHandle dataConstructor)
 			throws IllegalAccessException {
+
+		//		Class<?>[] params = new Class[fields.size()];
+		//		for (int x = 0; x < fields.size(); x++) {
+		//			params[x] = fields.get(x).getType();
+		//		}
+		//
+		//		MethodHandle signature = MethodHandles.empty(MethodType.methodType(dataClass, params));
+
 		// (Object[]):serialClass -> ctor(Object[])
 		MethodHandle create = createEmbedConstructor(dataClass, dataConstructor, fields);
 
 		// (serialClass, Object[]) -> serialClass.setValues(Object[x]);
-		MethodHandle setters = createEmbedSetters(dataClass, fields);
+		MethodHandle setters = createEmbedSetters(create, dataClass, fields);
 
 		// (Object[], Object[]) -> ctor(Object[]).setvalues(Object[])
 		MethodHandle createAndSet = MethodHandles.collectArguments(setters, 0, create);
 
-		return createAndSet;
+		// (Object[]):dataObject 
+		int[] permuteInput = new int[2];
+		MethodHandle result = MethodHandles.permuteArguments(createAndSet, MethodType.methodType(dataClass, Object[].class), permuteInput);
+
+		return result;
 	}
 
 	/**
@@ -368,8 +456,8 @@ public class DefaultResolver implements PepContextResolver {
 	 * @param fields
 	 * @return
 	 */
-	private MethodHandle createEmbedConstructor(Class<?> dataClass, MethodHandle objectConstructor, List<ComponentInfo> fields) {
-		MethodHandle result = objectConstructor;
+	private MethodHandle createEmbedConstructor(Class<?> dataClass, MethodHandle dataConstructor, List<ComponentInfo> fields) {
+		MethodHandle result = dataConstructor;
 
 		for (int x = 0; x < fields.size(); x++) {
 			ComponentInfo field = fields.get(x);
@@ -395,10 +483,13 @@ public class DefaultResolver implements PepContextResolver {
 		}
 
 		// spread the arguments so ctor(Object[],Object[]...) becomes ctor(Object[])
-		int paramCount = objectConstructor.type().parameterCount();
+		int paramCount = dataConstructor.type().parameterCount();
 		if (paramCount > 0) {
 			int[] permuteInput = new int[paramCount];
 			result = MethodHandles.permuteArguments(result, MethodType.methodType(dataClass, Object[].class), permuteInput);
+		} else {
+
+			result = MethodHandles.dropArguments(result, 0, Object[].class);
 		}
 		return result;
 	}
@@ -410,10 +501,14 @@ public class DefaultResolver implements PepContextResolver {
 	 * @return
 	 * @throws IllegalAccessException 
 	 */
-	private MethodHandle createEmbedSetters(Class<?> dataClass, List<ComponentInfo> fields) throws IllegalAccessException {
+	private MethodHandle createEmbedSetters(MethodHandle ctorSignature, Class<?> dataClass, List<ComponentInfo> fields)
+			throws IllegalAccessException {
 
-		// (object):object -> return object;
-		MethodHandle result = MethodHandles.identity(dataClass);
+		// (dataClass,Object[]):dataClass -> return object;
+		MethodHandle identity = MethodHandles.identity(dataClass);
+
+		// (dataClass, Object[]):dataClass -> return dataClass;
+		MethodHandle result = MethodHandles.dropArguments(identity, 1, Object[].class);
 
 		for (int x = 0; x < fields.size(); x++) {
 
@@ -432,7 +527,8 @@ public class DefaultResolver implements PepContextResolver {
 				MethodHandle index = MethodHandles.constant(int.class, inputIndex);
 
 				// (value[]):Object -> value[inputIndex]
-				MethodHandle arrayIndexGetter = MethodHandles.collectArguments(arrayGetter, 1, index);
+				MethodHandle arrayIndexGetter = MethodHandles.collectArguments(arrayGetter, 1, index)
+						.asType(MethodType.methodType(field.getType(), Object[].class));
 
 				// (obj, value[]):void -> obj.setField( value[inputIndex] );
 				MethodHandle arrayFieldSetter = MethodHandles.collectArguments(fieldSetter, 1, arrayIndexGetter);

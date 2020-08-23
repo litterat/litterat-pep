@@ -3,14 +3,14 @@ package io.litterat.pep.describe;
 import java.lang.invoke.MethodHandle;
 import java.util.Collection;
 
-import io.litterat.pep.DataObjectBridge;
+import io.litterat.pep.ObjectDataBridge;
 
 /**
  * 
  * Default Collection to array bridge.
  *
  */
-public class CollectionBridge implements DataObjectBridge<Object[], Collection<?>> {
+public class CollectionBridge implements ObjectDataBridge<Object[], Collection<?>> {
 
 	MethodHandle collectionConstructor;
 

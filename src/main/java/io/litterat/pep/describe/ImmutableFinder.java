@@ -36,6 +36,7 @@ import io.litterat.pep.PepException;
 
 public class ImmutableFinder implements ComponentFinder {
 
+	@SuppressWarnings("unused")
 	private final PepContext context;
 
 	public ImmutableFinder(PepContext context) {

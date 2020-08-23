@@ -15,9 +15,19 @@
  */
 package io.litterat.pep;
 
-public interface DataObjectBridge<S, B> {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-	public S toData(B b);
+/**
+ * 
+ *
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER })
+public @interface Field {
 
-	public B toObject(S s);
+	// allow overriding the name of the field.
+	public String name() default "";
 }

@@ -15,7 +15,7 @@
  */
 package io.litterat.pep.data;
 
-import io.litterat.pep.PepData;
+import io.litterat.pep.Data;
 import io.litterat.pep.ToData;
 import io.litterat.pep.data.ProjectImmutable.ProjectImmutableData;
 
@@ -29,7 +29,7 @@ public class ProjectImmutable implements ToData<ProjectImmutableData> {
 		private final int x;
 		private final int y;
 
-		@PepData
+		@Data
 		public ProjectImmutableData(int x, int y) {
 			this.x = x;
 			this.y = y;
@@ -50,7 +50,7 @@ public class ProjectImmutable implements ToData<ProjectImmutableData> {
 		this.y = y;
 	}
 
-	@PepData
+	@Data
 	public ProjectImmutable(ProjectImmutableData data) {
 		this.x = data.x;
 		this.y = data.y;

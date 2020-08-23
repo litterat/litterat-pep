@@ -16,13 +16,55 @@
 package io.litterat.pep.describe;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class GetSetFinder implements ComponentFinder {
 
 	@Override
-	public void findComponents(Class<?> clss, Constructor<?> constructor, List<ComponentInfo> fields) {
-		// TODO implement this.
+	public void findComponents(Class<?> clss, Constructor<?> constructor, List<ComponentInfo> fields) throws SecurityException {
+
+		List<ComponentInfo> getSetList = new ArrayList<>();
+
+		Method[] methods = clss.getDeclaredMethods();
+		for (Method method : methods) {
+
+			// find the setters.
+			if (method.getName().startsWith("set") && method.getName().length() > 3) {
+				String getterName = "g" + method.getName().substring(1);
+
+				try {
+					Method getter = clss.getDeclaredMethod(getterName);
+
+					String fieldName = Character.toLowerCase(getterName.charAt(3)) + getterName.substring(4);
+
+					// Found a matching setter/getter pair, so add to fields.
+					ComponentInfo info = new ComponentInfo(fieldName, getter.getReturnType());
+					info.setReadMethod(getter);
+					info.setWriteMethod(method);
+
+					fields.add(info);
+
+				} catch (NoSuchMethodException ex) {
+					// ignore this field, no matching getter.
+					continue;
+				}
+			}
+		}
+
+		// We can find the list in different orders from Java, so sort them before adding them as fields.
+		Collections.sort(getSetList, new Comparator<ComponentInfo>() {
+
+			@Override
+			public int compare(ComponentInfo o1, ComponentInfo o2) {
+				return o1.getName().compareTo(o2.getName());
+			}
+		});
+
+		fields.addAll(getSetList);
 	}
 
 }

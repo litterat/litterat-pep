@@ -106,6 +106,10 @@ public class PepDataClass {
 		return isAtom;
 	}
 
+	public boolean isArray() {
+		return isArray;
+	}
+
 	/**
 	 * @return A MethodHandle that has the signature T embed(Object[] values).
 	 */

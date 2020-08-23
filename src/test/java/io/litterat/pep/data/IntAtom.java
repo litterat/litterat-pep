@@ -18,7 +18,7 @@ package io.litterat.pep.data;
 import java.util.HashMap;
 import java.util.Map;
 
-import io.litterat.pep.PepAtom;
+import io.litterat.pep.Atom;
 
 public class IntAtom {
 
@@ -34,7 +34,7 @@ public class IntAtom {
 
 	private static final Map<Integer, IntAtom> atomList = new HashMap<>();
 
-	@PepAtom
+	@Atom
 	public static final IntAtom getAtom(int id) {
 		IntAtom atom = atomList.get(id);
 		if (atom == null) {

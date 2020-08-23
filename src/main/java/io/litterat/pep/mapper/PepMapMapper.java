@@ -15,7 +15,6 @@
  */
 package io.litterat.pep.mapper;
 
-import java.lang.invoke.MethodHandle;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -72,8 +71,8 @@ public class PepMapMapper {
 			}
 			return map;
 		} catch (Throwable t) {
-			throw new PepException(String.format("Failed to convert %s to Map. Could not convert field %s",
-					dataClass.typeClass(), dataClass.dataComponents()[fieldIndex].name()), t);
+			throw new PepException(String.format("Failed to convert %s to Map. Could not convert field %s", dataClass.typeClass(),
+					dataClass.dataComponents()[fieldIndex].name()), t);
 		}
 	}
 
@@ -110,15 +109,18 @@ public class PepMapMapper {
 			}
 
 			// Convert constructor to take Object[]
-			MethodHandle constructor = dataClass.constructor().asSpreader(Object[].class,
-					dataClass.dataComponents().length);
+			//MethodHandle constructor = dataClass.constructor().asSpreader(Object[].class, dataClass.dataComponents().length);
 
-			Object data = constructor.invoke(construct);
+			Object data = dataClass.constructor().invoke(construct);
 
 			return dataClass.toObject().invoke(data);
 		} catch (Throwable t) {
-			throw new PepException(String.format("Failed to convert Map to %s. Incorrect value for field %s",
-					dataClass.typeClass(), dataClass.dataComponents()[fieldIndex].name()), t);
+			if (fieldIndex < dataClass.dataComponents().length) {
+				throw new PepException(String.format("Failed to convert Map to %s. Incorrect value for field %s", dataClass.typeClass(),
+						dataClass.dataComponents()[fieldIndex].name()), t);
+			} else {
+				throw new PepException(String.format("Failed to convert Map to %s.", dataClass.typeClass()), t);
+			}
 		}
 
 	}

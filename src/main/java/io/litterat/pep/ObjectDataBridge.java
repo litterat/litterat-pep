@@ -13,35 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.litterat.pep.data;
+package io.litterat.pep;
 
-import io.litterat.pep.Data;
+public interface ObjectDataBridge<S, B> {
 
-/**
- * 
- * This is a very simple sample.
- *
- */
+	public S toData(B b);
 
-@Data
-public class SimplePojo {
-
-	private int x;
-	private int y;
-
-	public void setX(int x) {
-		this.x = x;
-	}
-
-	public int getX() {
-		return x;
-	}
-
-	public void setY(int y) {
-		this.y = y;
-	}
-
-	public int getY() {
-		return y;
-	}
+	public B toObject(S s);
 }

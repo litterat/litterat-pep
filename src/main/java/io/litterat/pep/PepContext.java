@@ -135,7 +135,7 @@ public class PepContext {
 		descriptors.put(targetClass, descriptor);
 	}
 
-	public void registerAtom(Class<?> targetClass, DataObjectBridge<?, ?> bridge) {
+	public void registerAtom(Class<?> targetClass, ObjectDataBridge<?, ?> bridge) {
 
 	}
 

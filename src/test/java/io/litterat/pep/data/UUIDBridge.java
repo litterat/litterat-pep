@@ -17,9 +17,9 @@ package io.litterat.pep.data;
 
 import java.util.UUID;
 
-import io.litterat.pep.DataObjectBridge;
+import io.litterat.pep.ObjectDataBridge;
 
-public class UUIDBridge implements DataObjectBridge<String, UUID> {
+public class UUIDBridge implements ObjectDataBridge<String, UUID> {
 
 	@Override
 	public String toData(UUID object) {

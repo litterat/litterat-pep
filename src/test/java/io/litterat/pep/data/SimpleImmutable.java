@@ -15,14 +15,14 @@
  */
 package io.litterat.pep.data;
 
-import io.litterat.pep.PepData;
+import io.litterat.pep.Data;
 
 public class SimpleImmutable {
 
 	private final int x;
 	private final int y;
 
-	@PepData
+	@Data
 	public SimpleImmutable(int x, int y) {
 		this.x = x;
 		this.y = y;

@@ -1,6 +1,6 @@
 package io.litterat.pep.describe;
 
-import io.litterat.pep.DataObjectBridge;
+import io.litterat.pep.ObjectDataBridge;
 
 /**
  * 
@@ -8,7 +8,7 @@ import io.litterat.pep.DataObjectBridge;
  *
  */
 @SuppressWarnings("rawtypes")
-public class EnumBridge implements DataObjectBridge<String, Enum> {
+public class EnumBridge implements ObjectDataBridge<String, Enum> {
 
 	private final Class enumType;
 
