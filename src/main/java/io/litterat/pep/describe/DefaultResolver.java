@@ -133,11 +133,27 @@ public class DefaultResolver implements PepContextResolver {
 			return true;
 		}
 
+		// Check for class annoation
+		Atom pepAtom = targetClass.getAnnotation(Atom.class);
+		if (pepAtom != null) {
+			return true;
+		}
+
 		// Check for annotation on constructor.
 		Constructor<?>[] constructors = targetClass.getConstructors();
 		for (Constructor<?> constructor : constructors) {
-			Atom pepAtom = constructor.getAnnotation(Atom.class);
+			pepAtom = constructor.getAnnotation(Atom.class);
 			if (pepAtom != null) {
+				return true;
+			}
+		}
+
+		// This is to look at static methods
+		Method[] methods = targetClass.getDeclaredMethods();
+		for (Method method : methods) {
+
+			pepAtom = method.getAnnotation(Atom.class);
+			if (Modifier.isStatic(method.getModifiers()) && pepAtom != null) {
 				return true;
 			}
 		}
@@ -234,20 +250,22 @@ public class DefaultResolver implements PepContextResolver {
 			}
 
 			// Allow enums to be serialized to their String value if using default serialization.
-			if (allowSerializable || allowAny) {
-				if (targetClass.isEnum()) {
+			Atom enumAtom = targetClass.getAnnotation(Atom.class);
+			if (targetClass.isEnum() && (allowSerializable || allowAny || enumAtom != null)) {
 
-					EnumBridge bridge = new EnumBridge(targetClass);
+				EnumBridge bridge = new EnumBridge(targetClass);
 
-					MethodHandle identity = MethodHandles.identity(targetClass);
+				MethodHandle identity = MethodHandles.identity(targetClass);
 
-					MethodHandle toObject = MethodHandles.lookup()
-							.findVirtual(CollectionBridge.class, TOOBJECT_METHOD, MethodType.methodType(Enum.class, String.class)).bindTo(bridge);
-					MethodHandle toData = MethodHandles.lookup()
-							.findVirtual(CollectionBridge.class, TODATA_METHOD, MethodType.methodType(String.class, Enum.class)).bindTo(bridge);
+				MethodHandle toObject = MethodHandles.lookup()
+						.findVirtual(EnumBridge.class, TOOBJECT_METHOD, MethodType.methodType(Enum.class, String.class)).bindTo(bridge)
+						.asType(MethodType.methodType(targetClass, String.class));
+				MethodHandle toData = MethodHandles.lookup()
+						.findVirtual(EnumBridge.class, TODATA_METHOD, MethodType.methodType(String.class, Enum.class)).bindTo(bridge)
+						.asType(MethodType.methodType(String.class, targetClass));
 
-					descriptor = new PepDataClass(targetClass, String.class, identity, toData, toObject, new PepDataComponent[0]);
-				}
+				descriptor = new PepDataClass(targetClass, String.class, identity, toData, toObject, new PepDataComponent[0], true);
+
 			}
 		} catch (SecurityException | IllegalAccessException | NoSuchMethodException | PepException e) {
 			throw new PepException("Failed to get atom descriptor", e);
