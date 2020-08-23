@@ -160,15 +160,17 @@ public class PepArrayMapper {
 			// () -> inputIndex
 			MethodHandle index = MethodHandles.constant(int.class, inputIndex);
 
+			PepDataClass fieldDataClass = field.dataClass();
+
 			// (values[]) -> values[inputIndex]
 			MethodHandle arrayIndexGetter = MethodHandles.collectArguments(arrayGetter, 1, index)
-					.asType(MethodType.methodType(field.type(), Object[].class));
+					.asType(MethodType.methodType(fieldDataClass.dataClass(), Object[].class));
 
 			// TODO Needs to be check for nulls before calling toObject or array to Object.
 
 			// Pass the object through toObject if it isn't an atom.
 			// (values[]) -> toObject(values[x])
-			PepDataClass fieldDataClass = field.dataClass();
+
 			if (fieldDataClass.isAtom()) {
 
 				arrayIndexGetter = MethodHandles.collectArguments(fieldDataClass.toObject(), 0, arrayIndexGetter);

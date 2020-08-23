@@ -15,13 +15,17 @@
  */
 package io.litterat.pep;
 
+import java.util.Map;
 import java.util.UUID;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.litterat.pep.data.SimpleUUIDImmutable;
 import io.litterat.pep.data.UUIDBridge;
+import io.litterat.pep.mapper.PepArrayMapper;
+import io.litterat.pep.mapper.PepMapMapper;
 
 public class UUIDBridgeTest {
 
@@ -39,7 +43,45 @@ public class UUIDBridgeTest {
 
 	@Test
 	public void checkDescriptor() throws Throwable {
-		context.registerAtom(SimpleUUIDImmutable.class, new UUIDBridge());
+		context.registerAtom(UUID.class, new UUIDBridge());
 
+	}
+
+	@Test
+	public void testToArray() throws Throwable {
+
+		context.registerAtom(UUID.class, new UUIDBridge());
+
+		// project to an array.
+		PepArrayMapper arrayMap = new PepArrayMapper(context);
+		Object[] values = arrayMap.toArray(test);
+		Assertions.assertNotNull(values);
+
+		// rebuild as an object.
+		SimpleUUIDImmutable object = arrayMap.toObject(SimpleUUIDImmutable.class, values);
+
+		// Validate
+		Assertions.assertNotNull(object);
+		Assertions.assertTrue(object instanceof SimpleUUIDImmutable);
+		Assertions.assertEquals(FIRST_UUID, test.first());
+		Assertions.assertEquals(SECOND_UUID, test.second());
+
+	}
+
+	@Test
+	public void testToMap() throws Throwable {
+
+		context.registerAtom(UUID.class, new UUIDBridge());
+
+		PepMapMapper mapMapper = new PepMapMapper(context);
+		Map<String, Object> map = mapMapper.toMap(test);
+
+		SimpleUUIDImmutable object = (SimpleUUIDImmutable) mapMapper.toObject(SimpleUUIDImmutable.class, map);
+
+		// validate result.
+		Assertions.assertNotNull(object);
+		Assertions.assertTrue(object instanceof SimpleUUIDImmutable);
+		Assertions.assertEquals(FIRST_UUID, test.first());
+		Assertions.assertEquals(SECOND_UUID, test.second());
 	}
 }

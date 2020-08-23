@@ -15,6 +15,9 @@
  */
 package io.litterat.pep;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 
 import io.litterat.pep.describe.DefaultResolver;
@@ -135,7 +138,22 @@ public class PepContext {
 		descriptors.put(targetClass, descriptor);
 	}
 
-	public void registerAtom(Class<?> targetClass, ObjectDataBridge<?, ?> bridge) {
+	public void registerAtom(Class<?> targetClass, ObjectDataBridge<?, ?> bridge) throws PepException {
+		checkExists(targetClass);
+
+		Class<?> bridgeClass = bridge.getClass();
+
+		try {
+			Method toDataMethod = bridgeClass.getMethod("toData", targetClass);
+			Method toObjectMethod = bridgeClass.getMethod("toObject", toDataMethod.getReturnType());
+
+			MethodHandle toData = MethodHandles.lookup().unreflect(toDataMethod).bindTo(bridge);
+			MethodHandle toObject = MethodHandles.lookup().unreflect(toObjectMethod).bindTo(bridge);
+
+			register(targetClass, new PepDataClass(targetClass, toDataMethod.getReturnType(), toData, toObject));
+		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | PepException e) {
+			throw new PepException("Failed to register atom bridge", e);
+		}
 
 	}
 

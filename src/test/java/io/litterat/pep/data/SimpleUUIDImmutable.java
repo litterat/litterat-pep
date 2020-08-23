@@ -17,11 +17,14 @@ package io.litterat.pep.data;
 
 import java.util.UUID;
 
+import io.litterat.pep.Data;
+
 public class SimpleUUIDImmutable {
 
 	private final UUID first;
 	private final UUID second;
 
+	@Data
 	public SimpleUUIDImmutable(UUID first, UUID second) {
 		this.first = first;
 		this.second = second;

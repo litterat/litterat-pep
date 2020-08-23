@@ -244,8 +244,7 @@ public class DefaultResolver implements PepContextResolver {
 					MethodHandle toObject = MethodHandles.lookup()
 							.findVirtual(CollectionBridge.class, TOOBJECT_METHOD, MethodType.methodType(Enum.class, String.class)).bindTo(bridge);
 					MethodHandle toData = MethodHandles.lookup()
-							.findVirtual(CollectionBridge.class, TODATA_METHOD, MethodType.methodType(Object[].class, Collection.class))
-							.bindTo(bridge);
+							.findVirtual(CollectionBridge.class, TODATA_METHOD, MethodType.methodType(String.class, Enum.class)).bindTo(bridge);
 
 					descriptor = new PepDataClass(targetClass, String.class, identity, toData, toObject, new PepDataComponent[0]);
 				}

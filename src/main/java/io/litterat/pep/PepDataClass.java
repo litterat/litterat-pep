@@ -76,8 +76,8 @@ public class PepDataClass {
 	}
 
 	// An Atom with conversion functions. e.g. String <--> UUID
-	public PepDataClass(Class<?> targetType, MethodHandle toData, MethodHandle toObject) {
-		this(targetType, targetType, identity(targetType), toData, toObject, new PepDataComponent[0], true);
+	public PepDataClass(Class<?> targetType, Class<?> dataClass, MethodHandle toData, MethodHandle toObject) {
+		this(targetType, dataClass, identity(targetType), toData, toObject, new PepDataComponent[0], true);
 	}
 
 	private static MethodHandle identity(Class<?> targetType) {
