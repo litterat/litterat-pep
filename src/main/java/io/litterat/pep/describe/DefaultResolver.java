@@ -37,6 +37,7 @@ import io.litterat.pep.Data;
 import io.litterat.pep.PepContext;
 import io.litterat.pep.PepContextResolver;
 import io.litterat.pep.PepDataClass;
+import io.litterat.pep.PepDataClass.DataType;
 import io.litterat.pep.PepDataComponent;
 import io.litterat.pep.PepException;
 import io.litterat.pep.ToData;
@@ -177,7 +178,9 @@ public class DefaultResolver implements PepContextResolver {
 				MethodHandle constructor = MethodHandles.arrayConstructor(targetClass);
 				MethodHandle identity = MethodHandles.identity(targetClass);
 
-				descriptor = new PepDataClass(targetClass, targetClass, constructor, identity, identity, new PepDataComponent[0]);
+				Class<?> arrayType = targetClass.getComponentType();
+
+				descriptor = new PepDataClass(targetClass, targetClass, constructor, identity, identity, new PepDataComponent[0], DataType.ARRAY);
 
 			} else if (Collection.class.isAssignableFrom(targetClass)) {
 
@@ -190,7 +193,7 @@ public class DefaultResolver implements PepContextResolver {
 				MethodHandle toData = MethodHandles.lookup()
 						.findVirtual(CollectionBridge.class, TODATA_METHOD, MethodType.methodType(Object[].class, Collection.class)).bindTo(bridge);
 
-				descriptor = new PepDataClass(targetClass, Object[].class, constructor, toData, toObject, new PepDataComponent[0]);
+				descriptor = new PepDataClass(targetClass, Object[].class, constructor, toData, toObject, new PepDataComponent[0], DataType.ARRAY);
 
 			}
 
@@ -264,7 +267,7 @@ public class DefaultResolver implements PepContextResolver {
 						.findVirtual(EnumBridge.class, TODATA_METHOD, MethodType.methodType(String.class, Enum.class)).bindTo(bridge)
 						.asType(MethodType.methodType(String.class, targetClass));
 
-				descriptor = new PepDataClass(targetClass, String.class, identity, toData, toObject, new PepDataComponent[0], true);
+				descriptor = new PepDataClass(targetClass, String.class, identity, toData, toObject, new PepDataComponent[0], DataType.ATOM);
 
 			}
 		} catch (SecurityException | IllegalAccessException | NoSuchMethodException | PepException e) {

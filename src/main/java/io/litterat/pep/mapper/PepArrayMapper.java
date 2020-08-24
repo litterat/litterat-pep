@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import io.litterat.pep.ObjectDataBridge;
 import io.litterat.pep.PepContext;
 import io.litterat.pep.PepDataClass;
 import io.litterat.pep.PepDataComponent;
@@ -174,13 +175,25 @@ public class PepArrayMapper {
 			if (fieldDataClass.isAtom()) {
 
 				arrayIndexGetter = MethodHandles.collectArguments(fieldDataClass.toObject(), 0, arrayIndexGetter);
-			} else {
+			} else if (fieldDataClass.isData()) {
 				if (field.dataClass().typeClass() == dataClass.typeClass()) {
 					throw new IllegalArgumentException("Recursive structures not yet supported for array mapper");
 				} else {
 					ArrayFunctions af = this.getFunctions(field.dataClass().typeClass());
 
 					arrayIndexGetter = MethodHandles.collectArguments(af.toObject, 0, arrayIndexGetter);
+				}
+			} else {
+				try {
+					ArrayBridge bridge = new ArrayBridge(this, fieldDataClass);
+					MethodHandle bridgeToObject = MethodHandles.lookup()
+							.findVirtual(ArrayBridge.class, "toObject", MethodType.methodType(Object[].class, Object[].class)).bindTo(bridge);
+
+					bridgeToObject = bridgeToObject.asType(MethodType.methodType(Object[].class, fieldDataClass.typeClass()));
+
+					arrayIndexGetter = MethodHandles.collectArguments(bridgeToObject, 0, arrayIndexGetter);
+				} catch (NoSuchMethodException | IllegalAccessException e) {
+					throw new PepException("failed to build bridge for array", e);
 				}
 			}
 
@@ -204,12 +217,6 @@ public class PepArrayMapper {
 
 		}
 
-		// spread the arguments so ctor(Object[],Object[]...) becomes ctor(Object[])
-		//		int paramCount = dataClass.constructor().type().parameterCount();
-		//		if (paramCount > 0) {
-		//			
-		//			result = MethodHandles.permuteArguments(result, MethodType.methodType(dataClass.dataClass(), Object[].class), permuteInput);
-		//		}
 		return result;
 	}
 
@@ -293,13 +300,26 @@ public class PepArrayMapper {
 			// Pass the object through toArray if it isn't an atom.
 			if (fieldDataClass.isAtom()) {
 				fieldBox = MethodHandles.collectArguments(fieldDataClass.toData(), 0, fieldBox);
-			} else {
+			} else if (fieldDataClass.isData()) {
 				if (field.dataClass().typeClass() == dataClass.typeClass()) {
 					throw new IllegalArgumentException("Recursive structures not yet supported for array mapper");
 				} else {
 					ArrayFunctions af = this.getFunctions(field.dataClass().typeClass());
 					fieldBox = MethodHandles.collectArguments(af.toArray, 0, fieldBox);
 				}
+			} else {
+				try {
+					ArrayBridge bridge = new ArrayBridge(this, fieldDataClass);
+
+					MethodHandle bridgeToData = MethodHandles.lookup()
+							.findVirtual(ArrayBridge.class, "toData", MethodType.methodType(Object[].class, Object[].class)).bindTo(bridge);
+
+					bridgeToData = bridgeToData.asType(MethodType.methodType(Object[].class, fieldDataClass.typeClass()));
+					fieldBox = MethodHandles.collectArguments(bridgeToData, 0, fieldBox);
+				} catch (NoSuchMethodException | IllegalAccessException e) {
+					throw new PepException("failed to build array bridge", e);
+				}
+
 			}
 
 			fieldBox = fieldBox.asType(MethodType.methodType(Object.class, dataClass.dataClass()));
@@ -314,5 +334,52 @@ public class PepArrayMapper {
 
 		// (object[]):object[] -> ... callGetters(object[]); ... return object[];
 		return result;
+	}
+
+	private class ArrayBridge implements ObjectDataBridge<Object[], Object[]> {
+
+		private final PepArrayMapper arrayMapper;
+		private final PepDataClass fieldDataClass;
+
+		public ArrayBridge(PepArrayMapper arrayMapper, PepDataClass fieldDataClass) {
+			this.arrayMapper = arrayMapper;
+			this.fieldDataClass = fieldDataClass;
+		}
+
+		@Override
+		public Object[] toData(Object[] v) throws PepException {
+			try {
+				// convert each element of the array toMap.
+				Object[] dataArray = v;
+				Object[] outputArray = new Object[dataArray.length];
+				for (int x = 0; x < dataArray.length; x++) {
+					if (dataArray[x] != null) {
+						outputArray[x] = arrayMapper.toArray(dataArray[x]);
+					}
+				}
+
+				return outputArray;
+			} catch (Throwable e) {
+				throw new PepException("Failed to convert arra", e);
+			}
+		}
+
+		@Override
+		public Object[] toObject(Object[] s) throws PepException {
+			try {
+				Object[] inputArray = s;
+				Object[] dataArray = (Object[]) fieldDataClass.constructor().invoke(inputArray.length);
+				Class<?> arrayClass = fieldDataClass.typeClass().getComponentType();
+				for (int x = 0; x < inputArray.length; x++) {
+					if (inputArray[x] != null) {
+						dataArray[x] = arrayMapper.toObject(arrayClass, (Object[]) inputArray[x]);
+					}
+				}
+				return dataArray;
+			} catch (Throwable e) {
+				throw new PepException("Failed to convert arra", e);
+			}
+		}
+
 	}
 }

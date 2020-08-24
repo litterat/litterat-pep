@@ -17,7 +17,7 @@ package io.litterat.pep;
 
 public interface ObjectDataBridge<S, B> {
 
-	public S toData(B b);
+	public S toData(B b) throws PepException;
 
-	public B toObject(S s);
+	public B toObject(S s) throws PepException;
 }

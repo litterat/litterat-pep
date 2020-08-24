@@ -59,11 +59,21 @@ public class PepMapMapper {
 				if (v != null) {
 					PepDataClass fieldDataClass = field.dataClass();
 
-					// TODO array handling.
 					if (fieldDataClass.isAtom()) {
 						v = fieldDataClass.toData().invoke(v);
-					} else {
+					} else if (fieldDataClass.isData()) {
 						v = toMap(v);
+					} else {
+						// convert each element of the array toMap.
+						Object[] dataArray = (Object[]) v;
+						Object[] outputArray = new Object[dataArray.length];
+						for (int x = 0; x < dataArray.length; x++) {
+							if (dataArray[x] != null) {
+								outputArray[x] = toMap(dataArray[x]);
+							}
+						}
+
+						v = outputArray;
 					}
 				}
 
@@ -97,19 +107,24 @@ public class PepMapMapper {
 				// Recursively convert maps back to objects.
 				if (v != null) {
 					PepDataClass fieldDataClass = field.dataClass();
-
-					// TODO array handling.
 					if (fieldDataClass.isAtom()) {
 						v = fieldDataClass.toObject().invoke(v);
-					} else {
+					} else if (fieldDataClass.isData()) {
 						v = toObject(fieldDataClass.typeClass(), (Map<String, Object>) v);
+					} else {
+						Object[] inputArray = (Object[]) v;
+						Object[] dataArray = (Object[]) fieldDataClass.constructor().invoke(inputArray.length);
+						Class<?> arrayClass = fieldDataClass.typeClass().getComponentType();
+						for (int x = 0; x < inputArray.length; x++) {
+							if (inputArray[x] != null) {
+								dataArray[x] = toObject(arrayClass, (Map<String, Object>) inputArray[x]);
+							}
+						}
+						v = dataArray;
 					}
 				}
 				construct[fieldIndex] = v;
 			}
-
-			// Convert constructor to take Object[]
-			//MethodHandle constructor = dataClass.constructor().asSpreader(Object[].class, dataClass.dataComponents().length);
 
 			Object data = dataClass.constructor().invoke(construct);
 

@@ -25,6 +25,10 @@ import java.lang.invoke.MethodHandles;
  */
 public class PepDataClass {
 
+	public enum DataType {
+		ATOM, TUPLE, ARRAY
+	};
+
 	// The class to be projected.
 	private final Class<?> typeClass;
 
@@ -53,31 +57,31 @@ public class PepDataClass {
 	private final boolean isArray;
 
 	public PepDataClass(Class<?> targetType, Class<?> serialType, MethodHandle constructor, MethodHandle toData, MethodHandle toObject,
-			PepDataComponent[] fields, boolean isAtom) {
+			PepDataComponent[] fields, DataType dataType) {
 		this.typeClass = targetType;
 		this.dataClass = serialType;
 		this.dataComponents = fields;
 		this.constructor = constructor;
 		this.toData = toData;
 		this.toObject = toObject;
-		this.isData = (targetType == serialType);
-		this.isAtom = isAtom;
-		this.isArray = false;
+		this.isData = DataType.TUPLE == dataType;
+		this.isAtom = DataType.ATOM == dataType;
+		this.isArray = DataType.ARRAY == dataType;
 	}
 
 	public PepDataClass(Class<?> targetType, Class<?> serialType, MethodHandle constructor, MethodHandle toData, MethodHandle toObject,
 			PepDataComponent[] fields) {
-		this(targetType, serialType, constructor, toData, toObject, fields, false);
+		this(targetType, serialType, constructor, toData, toObject, fields, DataType.TUPLE);
 	}
 
 	// An Atom uses identity function for toData/toObject and construct.
 	public PepDataClass(Class<?> targetType) {
-		this(targetType, targetType, identity(targetType), identity(targetType), identity(targetType), new PepDataComponent[0], true);
+		this(targetType, targetType, identity(targetType), identity(targetType), identity(targetType), new PepDataComponent[0], DataType.ATOM);
 	}
 
 	// An Atom with conversion functions. e.g. String <--> UUID
 	public PepDataClass(Class<?> targetType, Class<?> dataClass, MethodHandle toData, MethodHandle toObject) {
-		this(targetType, dataClass, identity(targetType), toData, toObject, new PepDataComponent[0], true);
+		this(targetType, dataClass, identity(targetType), toData, toObject, new PepDataComponent[0], DataType.ATOM);
 	}
 
 	private static MethodHandle identity(Class<?> targetType) {
