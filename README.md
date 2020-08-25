@@ -195,7 +195,7 @@ NOTE: Reference section needs reviewing.
 
 #### PepContext
 
-The PepContext provides a library of PepDataClass descriptors. Each instance of a PepContext can have one mapping for a particular target class. This allows different communication streams to define different project/embed functions depending on the context of the
+The PepContext provides a library of PepDataClass descriptors. Each instance of a PepContext can have one mapping for a particular target class. This allows different communication streams to define different toData/toObject functions depending on the context of the
 communications. The interface has a simple interface with three functions.
 
 ```java
@@ -205,13 +205,10 @@ public PepDataClass getDescriptor(Class<?> targetClass) throws PepException;
 
 A PepException will be thrown if a descriptor could not be found or generated for the target class.
 
-**NOTE**: This interface may need to be expanded to allow an optional version to be specified. 
-
 ### PepDataClass & PepDataCompoment
 
 The PepDataClass provides the descriptor of any provided class such that it can be used by a serialization library to serialize
-an object instance. A PepDataComponent provides the toData/toObject method handles and convenience functions. Both PepDataClass
-and PepDataComponent are immutable.
+an object instance. A PepDataComponent provides the components or fields of a data class. Both PepDataClass and PepDataComponent are immutable.
 
 The PepDataClass has the following fields:
 
@@ -263,9 +260,8 @@ private final MethodHandle accessor;
 
 ### ToData interface
 
-The **ToData** interface adds a toData method to a class so that the developer can modify the projected form of the class.
-For example, the following Location object projects LocationData converting the format of the data. The LocationData
-implements the toObject interface to return the Location object. The matching constructor is annotated with @Data to allow the library to find both toData and toObject functions.
+The **ToData** interface adds a toData method to a class so that the developer can modify the toData form of the class.
+For example, the following Location object projects LocationData converting the format of the data. The matching constructor is annotated with @Data to allow the library to find both toData and toObject functions.
 
 
 ```java
@@ -300,7 +296,8 @@ public class Location implements ToData<LocationData> {
       	                     lonDeg, Math.floor( (data.lon-lonDeg)*60 )
    }
    
-   LocationData projects() {
+   @Override
+   LocationData toData() {
       return new LocationData( latDeg + (lonMin/60), lonDeg + (lonMin/60) );
    }
    
@@ -373,7 +370,7 @@ public class LocationDataBridge implements ObjectDataBridge<LocationData,Locatio
 }
 ```
 
-The bridge is registered with the context.
+The bridge is registered with the context prior to converting the target class.
 
 ```java
 // Create an instance object to be projected.
@@ -401,7 +398,8 @@ Location loc2 = (Location) arrayMap.toObject(Location.class, values);
 ### Data objects
 
 Plain Old Java Objects (POJOs) are serialized based on getter/setter pairs. In this case
-a no-argument constructor must be provided.
+a no-argument constructor must be provided. The class is annotated with @Data to identify the class
+is data and can be converted.
 
 ```java
 @Data
@@ -532,6 +530,7 @@ public class Point {
    private final int x;
    private final int y;
    
+   @Data
    public Point(int x, int y) {
       this.x = x;
       this.y = y;
