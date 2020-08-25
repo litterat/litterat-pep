@@ -28,6 +28,7 @@ public class IntAtom {
 		this.id = id;
 	}
 
+	@Atom
 	public int id() {
 		return id;
 	}

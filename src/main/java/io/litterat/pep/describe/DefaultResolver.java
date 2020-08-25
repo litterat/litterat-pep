@@ -178,8 +178,6 @@ public class DefaultResolver implements PepContextResolver {
 				MethodHandle constructor = MethodHandles.arrayConstructor(targetClass);
 				MethodHandle identity = MethodHandles.identity(targetClass);
 
-				Class<?> arrayType = targetClass.getComponentType();
-
 				descriptor = new PepDataClass(targetClass, targetClass, constructor, identity, identity, new PepDataComponent[0], DataType.ARRAY);
 
 			} else if (Collection.class.isAssignableFrom(targetClass)) {
@@ -249,6 +247,46 @@ public class DefaultResolver implements PepContextResolver {
 
 					descriptor = new PepDataClass(targetClass, dataClass, identity, toData, toObject, new PepDataComponent[0]);
 					break;
+				}
+			}
+
+			// This is to look at static methods
+			Method[] methods = targetClass.getDeclaredMethods();
+			for (Method method : methods) {
+
+				Atom pepAtom = method.getAnnotation(Atom.class);
+				if (Modifier.isStatic(method.getModifiers()) && pepAtom != null) {
+					Parameter[] params = method.getParameters();
+					if (params.length != 1 || !isPrimitive(params[0].getType())) {
+						throw new PepException("Atom static method must have a single primitive value");
+					}
+
+					MethodHandle toObject = MethodHandles.lookup().unreflect(method);
+
+					Class<?> param = params[0].getType();
+
+					MethodHandle toData = null;
+					// Requires an accessor with the same type.
+					for (Method accessorMethod : methods) {
+
+						Atom accessorAtom = accessorMethod.getAnnotation(Atom.class);
+						if (accessorAtom != null && !Modifier.isStatic(accessorMethod.getModifiers())) {
+							if (accessorMethod.getReturnType() != param) {
+								throw new PepException("Atom accessor method must have a single primitive value as same type as static constructor");
+							}
+							toData = MethodHandles.lookup().unreflect(accessorMethod);
+							break;
+						}
+
+					}
+
+					if (toData == null) {
+						throw new PepException("Atom accessor @Atom annotation not found");
+					}
+
+					MethodHandle identity = MethodHandles.identity(targetClass);
+					descriptor = new PepDataClass(targetClass, param, identity, toData, toObject, new PepDataComponent[0], DataType.ATOM);
+
 				}
 			}
 
