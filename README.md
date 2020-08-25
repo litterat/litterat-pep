@@ -29,11 +29,11 @@ PepContext context = PepContext.builder().build();
 // Create a mapper using the context.
 PepArrayMapper arrayMap = new PepArrayMapper(context);
 
-// Extract the values to an array
+// Extract the values to an array. Contains [ 1, 2 ]
 Object[] values = arrayMap.toData(p1);
 
 // Create the object from the values
-Point p2 = arrayMap.toObject(values);
+Point p2 = arrayMap.toObject(Point.class, values);
 ```
 
 The PepArrayMapper and PepMapMapper are both examples of how the library can be used. The PepArrayMapper is implemented using MethodHandles to demonstrate how the library might be used to generate highly efficient serialization code. The PepMapMapper provides a procedural example to show a more simple use of the library. 
@@ -184,9 +184,6 @@ The PepDataClass provides the conversion of these with:
 
 The library is currently under heavy development so expect some rough edges. Things still to do include:
 
- * Tuples - Write complete handling for POJO and use PepData annotation.
- * Atoms - Implement atom handling
- * Arrays - Write plan and implement functions for arrays.
  * Reference - Re-write reference documentation.
  * Versioning - A single target class may have multiple versions and may require multiple project/embed functions.
  * Collections - Collections (List,Map,Set,etc) will likely require some special handling to make them perform well.
@@ -198,49 +195,56 @@ NOTE: Reference section needs reviewing.
 
 #### PepContext
 
-The PepContext provides a library of PepClassDescriptors. Each instance of a PepContext can have one mapping for a particular target
-class. This allows different communication streams to define different project/embed functions depending on the context of the
+The PepContext provides a library of PepDataClass descriptors. Each instance of a PepContext can have one mapping for a particular target class. This allows different communication streams to define different project/embed functions depending on the context of the
 communications. The interface has a simple interface with three functions.
 
 ```java
 // get the class descriptor for the target class.
-public <T> PepClassDescriptor<T> getDescriptor(Class<T> targetClass) throws PepException;
+public PepDataClass getDescriptor(Class<?> targetClass) throws PepException;
 ```
 
-A PepException will be thrown if a descriptor could not be generated, or if a call to getDescriptor uses a different Embeds/ProjectEmbedPair
-implementation than was previously registered.
+A PepException will be thrown if a descriptor could not be found or generated for the target class.
 
 **NOTE**: This interface may need to be expanded to allow an optional version to be specified. 
 
-### PepClassDescriptor & PepFieldDescriptor
+### PepDataClass & PepDataCompoment
 
-The PepClassDescriptor provides the descriptor of any provided class such that it can be used by a serialization library to serialize
-an object instance. A PepClassDescriptor provides the project/embeds method handles and conveniences functions. Both PepClassDescriptor
-and PepFieldDescriptor are immutable.
+The PepDataClass provides the descriptor of any provided class such that it can be used by a serialization library to serialize
+an object instance. A PepDataComponent provides the toData/toObject method handles and convenience functions. Both PepDataClass
+and PepDataComponent are immutable.
 
-The PepClassDescriptor has the following fields:
+The PepDataClass has the following fields:
 
 ```java
-// The class to be projected.
-private final Class<T> targetClass;
+// The target class.
+private final Class<?> typeClass;
 
-// The embedded class type.
-private final Class<?> embedClass;
+// The data class type.
+private final Class<?> dataClass;
 
-// constructs, calls setters and embeds. Has signature: T embed( Object[] values ).
-private final MethodHandle embedFunction;
+// Constructor for the data object.
+private final MethodHandle constructor;
 
-// Calls getters on projected class
-private final MethodHandle getter;
+// Method handle to convert object to data object.
+private final MethodHandle toData;
 
-// Converts from Object[] to targetClass. Has signature: Object[] project( T object );
-private final MethodHandle projectFunction;
+// Method handle to convert data object to target object.
+private final MethodHandle toObject;
 
-// All fields in the projected class.
-private final PepFieldDescriptor[] fields;
+// All fields in the projected class. Only valid for data
+private final PepDataComponent[] dataComponents;
+
+// Target class is data.
+private final boolean isData;
+
+// An atom is any value that is a single primitive value as data.
+private final boolean isAtom;
+
+// Target class is an array.
+private final boolean isArray;
 ```
 
-The PepFieldDescriptor has the following fields:
+The PepDataComponent has the following fields:
 
 ```java
 // name of the field
@@ -249,90 +253,23 @@ private final String name;
 // type of the field
 private final Class<?> type;
 
-// is the field optional
-private final boolean isOptional;
-
-// set if the field is set in the constructor
-private final int ctorArg;
+// Reference for the type.
+private final PepDataClass dataClass;
 
 // accessor read handle. signature: type t = object.getT();
-private final MethodHandle readHandle;
+private final MethodHandle accessor;
 
-// setter write handle. Null for constructors. signature: object.setT( type t );
-private final MethodHandle writeHandle;
 ```
 
-### Projects & Embeds interfaces
+### ToData interface
 
-The **Projects** interface adds a projects method to a class so that the developer can modify the projected form of the class.
+The **ToData** interface adds a toData method to a class so that the developer can modify the projected form of the class.
 For example, the following Location object projects LocationData converting the format of the data. The LocationData
-implements the Embeds interface to return the Location object.
+implements the toObject interface to return the Location object. The matching constructor is annotated with @Data to allow the library to find both toData and toObject functions.
 
 
 ```java
-public class Location implements Projects<LocationData> {
-   private final int latDeg;
-   private final int latMin;
-   private final int lonDeg;
-   private final int lonMin;
-
-   public static class LocationData implements Embeds<Location> {
-      private final float lat;
-      private final float lon;
-      
-      public LocationData( float lat, float lon ) {
-      	this.lat = lat;
-      	this.lon = lon;
-      }
-      
-      public Location embeds() {
-         int latDeg = Math.floor(lat);
-         int lonDeg = Math.floor(lon);
-      	return new Location( latDeg, Math.floor( (lat-latDeg)*60 ), 
-      	                     lonDeg, Math.floor( (lon-lonDeg)*60 )
-      }
-   }
-   
-   public Location(int latDeg, int latMin, int lonDeg, int lonMin) {
-      this.latDeg = latDeg;
-      this.latMin = latMin;
-      this.lonDeg = lonDeg;
-      this.lonMin = lonMin;
-   }
-   
-   LocationData projects() {
-      return new LocationData( latDeg + (lonMin/60), lonDeg + (lonMin/60) );
-   }
-   
-   ... accessors ...
-}
-```
-
-While the target object Location stores multiple elements, the projected form for serialization uses
-LocationData with two float values. 
-
-```java
-// Create an instance object to be projected.
-Location loc1 = new Location(-37,14, 144, 26);
-
-// Build a descriptor
-PepClassDescriptor locationDescriptor = PepClassDescriptor.describe(Location.class);
-
-// Extract the values to an array
-Object[] values = pointDescriptor.project(loc1);
-
-float latitude = values[0];
-float longitude = values[1];
-
-// Create the object from the values
-Location loc2 = (Location) pointDescriptor.embed(values);
-```
-
-A class can implement the Projects interface and the projected class doesn't need to implement the **Embeds** interface.
-In this case, it must provide a constructor which accepts the projected class. 
-
-```java
-public class Location implements Projects<LocationData> {
+public class Location implements ToData<LocationData> {
    private final int latDeg;
    private final int latMin;
    private final int lonDeg;
@@ -355,6 +292,7 @@ public class Location implements Projects<LocationData> {
       this.lonMin = lonMin;
    }
    
+   @Data
    public Location(LocationData data) {
    	  int latDeg = Math.floor(data.lat);
       int lonDeg = Math.floor(data.lon);
@@ -370,11 +308,32 @@ public class Location implements Projects<LocationData> {
 }
 ```
 
-A class can provide a class that implements the Embeds interface.
-In this case the Embeds class must accepts the target class as a constructor.
+While the target object Location stores multiple elements, the projected form for serialization uses
+LocationData with two float values. 
 
-Note: It might be worth allowing the descriptor to take a second parameter of the embedded
-class type. Also need a better way to link Location to LocationData in this scenario (an annotation on the class?)
+```java
+// Create an instance object to be projected.
+Location loc1 = new Location(-37,14, 144, 26);
+
+// Create a context and a descriptor for the target class.
+PepContext context = PepContext.builder().build();
+PepArrayMapper arrayMap = new PepArrayMapper(context);
+
+// Extract the values to an array
+Object[] values = arrayMap.project(loc1);
+
+float latitude = values[0];
+float longitude = values[1];
+
+// Create the object from the values
+Location loc2 = (Location) arrayMap.toObject(Location.class, values);
+```
+
+### ObjectDataBridge interface
+
+
+A class can provide a class that implements the ObjectDataBridge interface.
+In this case an external bridge class does the mapping to from the target class.
 
 ```java
 public class Location {
@@ -382,29 +341,8 @@ public class Location {
    private final int latMin;
    private final int lonDeg;
    private final int lonMin;
-
-   public static class LocationData implements Embeds<Location> {
-      private final float lat;
-      private final float lon;
-      
-      public LocationData( float lat, float lon ) {
-      	this.lat = lat;
-      	this.lon = lon;
-      }
-      
-      public LocationData( Location location ) {
-         this.lat = latDeg + (latMin/60);
-         this.lon = lonDeg + (lonMin/60);
-      }
-      
-      public Location embeds() {
-         int latDeg = Math.floor(lat);
-         int lonDeg = Math.floor(lon);
-      	return new Location( latDeg, Math.floor( (lat-latDeg)*60 ), 
-      	                     lonDeg, Math.floor( (lon-lonDeg)*60 )
-      }
-   }
    
+   @Data
    public Location(int latDeg, int latMin, int lonDeg, int lonMin) {
       this.latDeg = latDeg;
       this.latMin = latMin;
@@ -416,18 +354,60 @@ public class Location {
 }
 ```
 
+The bridge code implements the conversions without needing to modify the Location class:
 
-### Simple objects
+```java
+public class LocationDataBridge implements ObjectDataBridge<LocationData,Location> {
+
+   LocationData toData(Location location) {
+     return new LocationData( latDeg + (lonMin/60), lonDeg + (lonMin/60) );
+   }
+   
+   Location toObject(LocationData data) {
+      int latDeg = Math.floor(data.lat);
+      int lonDeg = Math.floor(data.lon);
+      return new Location( latDeg, Math.floor( (data.lat-latDeg)*60 ), 
+      	                  lonDeg, Math.floor( (data.lon-lonDeg)*60 )
+   }
+
+}
+```
+
+The bridge is registered with the context.
+
+```java
+// Create an instance object to be projected.
+Location loc1 = new Location(-37,14, 144, 26);
+
+// Create a context and a descriptor for the target class.
+PepContext context = PepContext.builder().build();
+
+// register the bridge.
+context.register(Location.class, new LocationDataBridge() );
+
+// create the mapper based on the context.
+PepArrayMapper arrayMap = new PepArrayMapper(context);
+
+// Extract the values to an array
+Object[] values = arrayMap.project(loc1);
+
+float latitude = values[0];
+float longitude = values[1];
+
+// Create the object from the values
+Location loc2 = (Location) arrayMap.toObject(Location.class, values);
+```
+
+### Data objects
 
 Plain Old Java Objects (POJOs) are serialized based on getter/setter pairs. In this case
 a no-argument constructor must be provided.
 
 ```java
+@Data
 public class Point {
    private int x;
    private int y;
-   
-   public Point() {}
    
    public int getX() {
       return x;
@@ -448,14 +428,15 @@ public class Point {
 ```
 
 In many cases the object being serialized are simple immutable objects like the following. 
-There is no projects/embeds implementations. As there is a single constructor it is taken to be the 
-structure to use for the serialized form.
+There is no projects/embeds implementations. The @Data annotation is put on the constructor to identify
+how the class should be created.
 
 ```java
 public class Point {
    private final int x;
    private final int y;
    
+   @Data
    public Point(int x, int y) {
       this.x = x;
       this.y = y;
@@ -486,7 +467,8 @@ public class Point {
    private final int x;
    private final int y;
    
-   public Point( @PepField("x") int x, @PepField("y") int y) {
+   @Data
+   public Point( @Field("x") int x, @Field("y") int y) {
       this.x = x*2;
       this.y = y*3;
    }
@@ -510,6 +492,7 @@ public class Point {
    
    private int z;
    
+   @Data
    public Point( int x,  int y) {
       this.x = x;
       this.y = y;
@@ -537,7 +520,7 @@ The three fields will be serialized with x,y,z values.
 
 
 
-### PepField annotation
+### Field annotation
 
 The field annotation can be used to override the properties of a field or to assist the library in finding
 the constructor/accessor pairs for a given class. In the following example the fields are renamed such
@@ -566,177 +549,8 @@ public class Point {
 }
 ```
 
-The field annotation can also be used to specify if a value is optional. By default any field that could
-have a null value will be described as being optional. In the following example, the class does not allow
-non-null name values, however, the projected field will by default have name as optional true. The
-Field annotation has been used to override this and make it false.
-
-```java
-public class Name {
-
-   @PepField(optional=false)
-   private final String name;
-   
-   public Name(String name) {
-   	   Objects.requiureNonNull(name, "name can not be null");
-   	   this.name = name;
-   }
-   
-   public String name() {
-   	   return name;
-   }
-}
-```
-
 The field annotation can be added to one of the constructor parameter, accessor, setter or class field. An error
 will occur if the annotation has been added to multiple places for the same logical field.
-
-### PepConstructor annotation
-
-The PepConstructor is used to specify which constructor should be used when there are multiple options.
-
-```java
-public class Point {
-   private final int x;
-   private final int y;
-   
-   @PepConstructor
-   public Point(int x, int y) {
-      this.x = x;
-      this.y = y;
-   }
-   
-   public Point(float x, float y) {
-      this.x = (int) x;
-      this.y = (int) y;
-   }
-   
-   public int getX() {
-      return x;
-   }
-   
-   public int getY() {
-      return y;
-   }
-}
-```
-
-It can also be used to specify a constructor on a static method where singletons or object pooling is used. The static constructor
-must match the parameters of the constructor for the object.
-
-```java
-public class Point {
-
-   private static final Map<Integer, Map<Integer,Point>> xPoints = new HashMap<>();
-   
-   @PepConstructor
-   public static Point get(int x, int y) {
-      Map<Integer,Point> yPoints = xPoints.get(x);
-      if (yPoints == null) {
-      	yPoints= new HashMap<>();
-      }
-      
-      Point p = yPoints.get(y);
-      if (p == null) {
-      	p = new Point(x,y);
-      	yPoints.put(y,p);
-      }
-      return p;
-   }
-
-   private final int x;
-   private final int y;
-      
-   private Point(int x, int y) {
-      this.x = x;
-      this.y = y;
-   }
-   
-   public Point(float x, float y) {
-      this.x = (int) x;
-      this.y = (int) y;
-   }
-   
-   public int getX() {
-      return x;
-   }
-   
-   public int getY() {
-      return y;
-   }
-}
-```
-
-### ProjectEmbedPair interface
-
-The ProjectEmbedPair interface is for creating an external projection and embedding function for the target object.
-This can be useful where the target object is for an external library.
-
-```java
- public static class LocationPep implements ProjectEmbedPair<Location,LocationData> {
-
-      public Location embeds(LocationData data) {
-         int latDeg = Math.floor(data.latitude());
-         int lonDeg = Math.floor(data.longitude());
-      	return new Location( latDeg, Math.floor( (data.latitude()-latDeg)*60 ), 
-      	                     lonDeg, Math.floor( (data.longitude()-lonDeg)*60 )
-      }
-   }
-   
-   LocationData projects(Location) {
-      return new LocationData( latDeg + (lonMin/60), lonDeg + (lonMin/60) );
-   }
-}
-
-public class Location {
-   private final int latDeg;
-   private final int latMin;
-   private final int lonDeg;
-   private final int lonMin;
-
-   public Location(int latDeg, int latMin, int lonDeg, int lonMin) {
-      this.latDeg = latDeg;
-      this.latMin = latMin;
-      this.lonDeg = lonDeg;
-      this.lonMin = lonMin;
-   }
-   
-   ... accessors ...
-}
-
-public class LocationData implements Embeds<Location> {
-   private final float lat;
-   private final float lon;
-  
-   public LocationData( float lat, float lon ) {
-  	 this.lat = latitude;
-  	 this.lon = lon;
-   }
-   
-   ... accessors ...
-}   
-```
-
-This is used when describing the object. The LocationPep object is passed in as the second parameter to the describe function.
-The LocationData object is used as the serialization object.
-
-```java
-// Create an instance object to be projected.
-Location loc1 = new Location(-37,14, 144, 26);
-
-// Build a descriptor
-PepContext context = new PepContext();
-PepClassDescriptor locationDescriptor = context.describe(Location.class, new LocationPep());
-
-// Extract the values to an array
-Object[] values = pointDescriptor.project(loc1);
-
-float latitude = values[0];
-float longitude = values[1];
-
-// Create the object from the values
-Location loc2 = (Location) pointDescriptor.embed(values);
-```
 
 
 ## Copyright
