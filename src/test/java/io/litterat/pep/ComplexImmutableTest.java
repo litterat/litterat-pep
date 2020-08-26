@@ -21,16 +21,16 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.litterat.pep.data.SimpleImmutable;
+import io.litterat.pep.data.ComplexImmutable;
 import io.litterat.pep.mapper.PepArrayMapper;
 import io.litterat.pep.mapper.PepMapMapper;
 
-public class ImmutableDescriptorTest {
+public class ComplexImmutableTest {
 
 	final static int TEST_X = 1;
 	final static int TEST_Y = 2;
 
-	SimpleImmutable test = new SimpleImmutable(TEST_X, TEST_Y);
+	ComplexImmutable test = new ComplexImmutable(TEST_X, TEST_Y);
 
 	PepContext context;
 
@@ -42,11 +42,11 @@ public class ImmutableDescriptorTest {
 	@Test
 	public void checkDescriptor() throws Throwable {
 
-		PepDataClass descriptor = context.getDescriptor(SimpleImmutable.class);
+		PepDataClass descriptor = context.getDescriptor(ComplexImmutable.class);
 		Assertions.assertNotNull(descriptor);
 
-		Assertions.assertEquals(SimpleImmutable.class, descriptor.typeClass());
-		Assertions.assertEquals(SimpleImmutable.class, descriptor.dataClass());
+		Assertions.assertEquals(ComplexImmutable.class, descriptor.typeClass());
+		Assertions.assertEquals(ComplexImmutable.class, descriptor.dataClass());
 
 		PepDataComponent[] fields = descriptor.dataComponents();
 		Assertions.assertNotNull(fields);
@@ -71,11 +71,11 @@ public class ImmutableDescriptorTest {
 		Object[] values = arrayMap.toArray(test);
 
 		// convert to object.
-		SimpleImmutable object = arrayMap.toObject(SimpleImmutable.class, values);
+		ComplexImmutable object = arrayMap.toObject(ComplexImmutable.class, values);
 
 		// validate result.
 		Assertions.assertNotNull(object);
-		Assertions.assertTrue(object instanceof SimpleImmutable);
+		Assertions.assertTrue(object instanceof ComplexImmutable);
 
 		Assertions.assertEquals(TEST_X, object.x());
 		Assertions.assertEquals(TEST_Y, object.y());
@@ -86,11 +86,11 @@ public class ImmutableDescriptorTest {
 		PepMapMapper mapMapper = new PepMapMapper(context);
 		Map<String, Object> map = mapMapper.toMap(test);
 
-		SimpleImmutable object = (SimpleImmutable) mapMapper.toObject(SimpleImmutable.class, map);
+		ComplexImmutable object = (ComplexImmutable) mapMapper.toObject(ComplexImmutable.class, map);
 
 		// validate result.
 		Assertions.assertNotNull(object);
-		Assertions.assertTrue(object instanceof SimpleImmutable);
+		Assertions.assertTrue(object instanceof ComplexImmutable);
 
 		Assertions.assertEquals(TEST_X, object.x());
 		Assertions.assertEquals(TEST_Y, object.y());
@@ -105,7 +105,7 @@ public class ImmutableDescriptorTest {
 		map.put("x", "error");
 
 		Assertions.assertThrows(PepException.class, () -> {
-			mapMapper.toObject(SimpleImmutable.class, map);
+			mapMapper.toObject(ComplexImmutable.class, map);
 		});
 
 	}

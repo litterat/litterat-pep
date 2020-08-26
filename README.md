@@ -184,14 +184,11 @@ The PepDataClass provides the conversion of these with:
 
 The library is currently under heavy development so expect some rough edges. Things still to do include:
 
- * Reference - Re-write reference documentation.
- * Versioning - A single target class may have multiple versions and may require multiple project/embed functions.
  * Collections - Collections (List,Map,Set,etc) will likely require some special handling to make them perform well.
+ * Versioning - A single target class may have multiple versions and may require multiple project/embed functions.
  * Interfaces - From a serialization point of view interfaces are similar to a union and will likely require some special handling.
 
 ## Reference
-
-NOTE: Reference section needs reviewing.
 
 #### PepContext
 

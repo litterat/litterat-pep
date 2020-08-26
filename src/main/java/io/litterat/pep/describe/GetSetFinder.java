@@ -46,7 +46,7 @@ public class GetSetFinder implements ComponentFinder {
 					info.setReadMethod(getter);
 					info.setWriteMethod(method);
 
-					fields.add(info);
+					getSetList.add(info);
 
 				} catch (NoSuchMethodException ex) {
 					// ignore this field, no matching getter.

@@ -4,7 +4,7 @@ import java.lang.reflect.Method;
 
 public class ComponentInfo {
 
-	private final String name;
+	private String name;
 
 	private final Class<?> type;
 
@@ -17,6 +17,10 @@ public class ComponentInfo {
 	public ComponentInfo(String name, Class<?> type) {
 		this.name = name;
 		this.type = type;
+	}
+
+	public void setName(String name) {
+		this.name = name;
 	}
 
 	public String getName() {

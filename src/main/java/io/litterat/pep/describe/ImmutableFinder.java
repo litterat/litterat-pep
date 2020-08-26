@@ -17,10 +17,11 @@ package io.litterat.pep.describe;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
-import java.util.HashMap;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
@@ -31,6 +32,7 @@ import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
+import io.litterat.pep.Field;
 import io.litterat.pep.PepContext;
 import io.litterat.pep.PepException;
 
@@ -56,7 +58,7 @@ public class ImmutableFinder implements ComponentFinder {
 			ClassNode classNode = new ClassNode();
 			cr.accept(classNode, 0);
 
-			Map<String, ComponentInfo> immutableFields = new HashMap<>(constructor.getParameterCount());
+			List<ComponentInfo> immutableFields = new ArrayList<>(constructor.getParameterCount());
 
 			// First try and identify the constructor arguments.
 			// Perform node instruction inspection to match constructor arguments with accessors.
@@ -65,10 +67,33 @@ public class ImmutableFinder implements ComponentFinder {
 				Type methodType = Type.getType(method.desc);
 				String constructorDescriptor = Type.getConstructorDescriptor(constructor);
 
+				// Find the MethodNode that matches the passed in constructor.
 				if (method.name.equals("<init>") && method.desc.equals(constructorDescriptor)) {
 					identifyArguments(constructor, immutableFields, method, methodType);
+					break;
 				}
-				break;
+
+			}
+
+			// if byte code analysis failed or if user supplies @Field annotations.
+			Parameter[] params = constructor.getParameters();
+			for (int x = 0; x < params.length; x++) {
+				Field field = params[x].getAnnotation(Field.class);
+				if (field != null) {
+					// field has been annotated so check for matching field.
+					final int paramIndex = x;
+					ComponentInfo component = immutableFields.stream().filter(e -> e.getConstructorArgument() == paramIndex).findFirst().orElse(null);
+					if (component != null) {
+						// renaming the field.
+						component.setName(field.name());
+					} else {
+						// Add the parameter.
+						component = new ComponentInfo(field.name(), params[x].getType());
+						component.setConstructorArgument(x);
+
+						immutableFields.add(component);
+					}
+				}
 			}
 
 			// Perform node instruction inspection to match constructor arguments with accessors.
@@ -85,12 +110,43 @@ public class ImmutableFinder implements ComponentFinder {
 				examineAccessor(clss, immutableFields, methodNode);
 			}
 
+			// Possibly failed to find accessor through invariant byte code analysis. 
+			// Fallback on @Field annotation or method name.
+			for (Method method : clss.getDeclaredMethods()) {
+				Field field = method.getAnnotation(Field.class);
+				if (field != null) {
+					// field has been annotated so check for matching field.
+					final String name = field.name();
+					ComponentInfo component = immutableFields.stream().filter(e -> e.getName().equals(name)).findFirst().orElse(null);
+					if (component != null && component.getReadMethod() == null) {
+						component.setReadMethod(method);
+						continue;
+					}
+				}
+
+				String name = method.getName();
+				ComponentInfo component = immutableFields.stream().filter(e -> e.getName().equals(name)).findFirst().orElse(null);
+				if (component != null && component.getReadMethod() == null) {
+					component.setReadMethod(method);
+					continue;
+				}
+			}
+
+			// Fail if we didn't find the right number of parameters.
 			if (immutableFields.size() != constructor.getParameterCount()) {
-				throw new PepException(String.format("Failed to match immutable fields for class: %s", clss));
+				throw new PepException(String.format("Failed to match immutable fields for class: %s. Add @Field annotations to assist.", clss));
+			}
+
+			// Check all params have valid information.
+			for (ComponentInfo component : immutableFields) {
+				if (component.getReadMethod() == null) {
+					throw new PepException(
+							String.format("Failed to match immutable field accessor for class: %s. Add @Field annotations to assist.", clss));
+				}
 			}
 
 			// Add the fields to the list for use.
-			fields.addAll(immutableFields.values());
+			fields.addAll(immutableFields);
 
 		} catch (IOException | NoSuchMethodException | SecurityException e) {
 			throw new PepException("Failed to access class", e);
@@ -112,7 +168,7 @@ public class ImmutableFinder implements ComponentFinder {
 	 * @param fieldMap
 	 * @param method
 	 */
-	private int identifyArguments(Constructor<?> constructor, Map<String, ComponentInfo> fieldMap, MethodNode method, Type methodType) {
+	private int identifyArguments(Constructor<?> constructor, List<ComponentInfo> fields, MethodNode method, Type methodType) {
 		boolean foundLoadThis = false;
 		boolean foundLoadArg = false;
 		int arg = 0;
@@ -152,7 +208,7 @@ public class ImmutableFinder implements ComponentFinder {
 					ComponentInfo component = new ComponentInfo(putFieldInsn.name, fieldClass);
 					component.setConstructorArgument(arg);
 
-					fieldMap.put(putFieldInsn.name, component);
+					fields.add(component);
 					argsFound++;
 
 				}
@@ -176,7 +232,7 @@ public class ImmutableFinder implements ComponentFinder {
 	 * @return field name
 	 * @throws NoSuchMethodException
 	 */
-	private String examineAccessor(Class<?> clss, Map<String, ComponentInfo> fieldMap, MethodNode method) throws NoSuchMethodException {
+	private String examineAccessor(Class<?> clss, List<ComponentInfo> fields, MethodNode method) throws NoSuchMethodException {
 		boolean foundLoadThis = false;
 		String lastField = null;
 
@@ -206,7 +262,8 @@ public class ImmutableFinder implements ComponentFinder {
 			case Opcodes.FRETURN:
 				if (foundLoadThis && lastField != null) {
 
-					ComponentInfo info = fieldMap.get(lastField);
+					final String fieldName = lastField;
+					ComponentInfo info = fields.stream().filter(e -> e.getName().equals(fieldName)).findFirst().orElse(null);
 					if (info != null) {
 						info.setReadMethod(clss.getDeclaredMethod(method.name));
 					}

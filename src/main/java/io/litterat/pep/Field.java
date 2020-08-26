@@ -29,5 +29,5 @@ import java.lang.annotation.Target;
 public @interface Field {
 
 	// allow overriding the name of the field.
-	public String name() default "";
+	public String name();
 }
