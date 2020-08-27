@@ -378,7 +378,7 @@ public class DefaultResolver implements PepContextResolver {
 				for (int x = 0; x < components.size(); x++) {
 					ComponentInfo info = components.get(x);
 
-					MethodHandle accessor = MethodHandles.lookup().unreflect(info.getReadMethod());
+					MethodHandle accessor = MethodHandles.publicLookup().unreflect(info.getReadMethod());
 
 					PepDataClass dataClass = context.getDescriptor(info.getType());
 
@@ -445,7 +445,7 @@ public class DefaultResolver implements PepContextResolver {
 
 		// only one custructor. this must be it.
 		if (constructors.length == 1) {
-			return MethodHandles.lookup().unreflectConstructor(constructors[0]);
+			return MethodHandles.publicLookup().unreflectConstructor(constructors[0]);
 		}
 
 		// Does it have an annotation?

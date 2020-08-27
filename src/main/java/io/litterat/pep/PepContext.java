@@ -60,7 +60,7 @@ public class PepContext {
 			return this;
 		}
 
-		PepContext build() {
+		public PepContext build() {
 			return new PepContext(this);
 		}
 	}
